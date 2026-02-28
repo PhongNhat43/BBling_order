@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Đăng nhập Quản trị | B.BLING</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: '#3E2723', cream: '#F2E8DF', accent: '#C2410C', success: '#16A34A' },
+          fontFamily: { serif: ['Playfair Display','serif'], sans: ['Montserrat','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body { height: 100%; }
+    .paper {
+      background: radial-gradient(1000px 700px at 20% 10%, rgba(0,0,0,0.05), transparent 60%),
+                  radial-gradient(800px 600px at 80% 20%, rgba(0,0,0,0.04), transparent 60%),
+                  linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02));
+    }
+    .shadow-soft{ box-shadow: 0 6px 20px rgba(62,39,35,.12); }
+  </style>
+</head>
+<body class="min-h-full bg-cream text-primary font-sans paper">
+  <div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-soft p-6">
+      <div class="text-center mb-6">
+        <div class="font-serif italic text-3xl">B.BLING</div>
+        <div class="text-xs uppercase tracking-[0.2em]">Admin Login</div>
+      </div>
+      <form id="form" class="space-y-4">
+        <div>
+          <label class="block text-xs mb-1">Email</label>
+          <input id="email" type="email" required class="w-full rounded-xl border border-primary/20 p-3 outline-none focus:ring-2 focus:ring-accent/60" placeholder="staff@bbling.coffee" />
+        </div>
+        <div>
+          <label class="block text-xs mb-1">Mật khẩu</label>
+          <input id="password" type="password" required class="w-full rounded-xl border border-primary/20 p-3 outline-none focus:ring-2 focus:ring-accent/60" placeholder="••••••••" />
+        </div>
+        <button type="submit" class="w-full py-3 rounded-xl bg-primary text-white font-semibold active:scale-95">Đăng nhập</button>
+      </form>
+      <div class="text-center mt-3 text-xs text-primary/70">Dành cho nhân viên quầy</div>
+      <div class="text-center mt-2 text-xs"><a href="index.html" class="text-accent underline underline-offset-4">Quay lại trang khách</a></div>
+    </div>
+  </div>
+  <script>
+    document.getElementById('form').addEventListener('submit', (e) => {
+      e.preventDefault()
+      location.href = 'admin-dashboard.html'
+    })
+  </script>
+</body>
+</html>

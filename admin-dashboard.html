@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Dashboard | B.BLING</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: '#3E2723', cream: '#F2E8DF', accent: '#C2410C', success: '#16A34A', darkbg: '#1F2937' },
+          fontFamily: { serif: ['Playfair Display','serif'], sans: ['Montserrat','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body { height: 100%; }
+    .shadow-soft{ box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  </style>
+</head>
+<body class="min-h-full bg-darkbg text-gray-100 font-sans">
+  <header class="px-4 py-4 border-b border-white/10">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="font-serif italic text-2xl">B.BLING</div>
+        <span class="text-xs uppercase tracking-[0.2em] text-gray-400">Admin</span>
+      </div>
+      <a href="index.html" class="text-xs text-gray-300 hover:text-white underline underline-offset-4">Về trang khách</a>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <section class="bg-gray-800 rounded-2xl p-4 shadow-soft">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-3">
+          <div class="font-semibold">Đơn hàng</div>
+          <a href="menu-management.html" class="text-xs px-3 py-1 rounded-lg border border-white/20 hover:bg-gray-700">Quản lý Menu</a>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="export-day" class="px-3 py-1 rounded-lg bg-accent text-white text-xs">Xuất báo cáo ngày</button>
+          <button id="enable-audio" class="px-3 py-1 rounded-lg bg-primary text-cream text-xs">Bật âm thanh</button>
+        </div>
+      </div>
+      <div id="order-list" class="space-y-2 max-h-[70vh] overflow-y-auto"></div>
+    </section>
+
+    <section class="bg-gray-800 rounded-2xl p-0 shadow-soft overflow-hidden">
+      <div class="p-4 border-b border-white/10">
+        <div id="detail-title" class="font-semibold">Chi tiết đơn</div>
+        <div id="detail-sub" class="text-xs text-gray-400"></div>
+      </div>
+      <div class="p-4 grid grid-rows-[auto_1fr_auto] gap-4 h-[70vh]">
+        <div id="detail-items" class="space-y-2"></div>
+
+        <div class="rounded-xl bg-gray-900 p-3">
+          <div class="text-xs text-gray-400 mb-2">Chat 1-1</div>
+          <div id="chat-log" class="h-40 overflow-y-auto space-y-2 p-2 bg-gray-800 rounded-lg"></div>
+          <div class="mt-2 flex items-center gap-2">
+            <input id="chat-input" class="flex-1 rounded-lg border border-white/10 bg-gray-900 text-gray-100 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn..." />
+            <label class="cursor-pointer px-3 py-2 rounded-lg bg-primary text-cream text-sm">
+              Upload
+              <input id="chat-upload" type="file" accept="image/*" class="hidden" />
+            </label>
+            <button id="chat-send" class="px-3 py-2 rounded-lg bg-accent text-white text-sm">Gửi</button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2">
+          <button id="btn-cancel" class="px-4 py-2 rounded-lg bg-red-600 text-white">Hủy đơn</button>
+          <button id="btn-approve" class="px-4 py-2 rounded-lg bg-yellow-500 text-black">Duyệt đơn</button>
+          <button id="btn-done" class="px-4 py-2 rounded-lg bg-success text-white">Hoàn thành</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const statusMap = {
+      pending: { label: 'Chờ duyệt', color: 'bg-red-600' },
+      processing: { label: 'Đang làm', color: 'bg-yellow-500 text-black' },
+      completed: { label: 'Hoàn thành', color: 'bg-green-600' }
+    }
+
+    const mockOrders = [
+      {
+        id: 'BILL102',
+        status: 'pending',
+        createdAt: Date.now() - 120000,
+        items: [
+          { name: 'Salted Almond Coffee', qty: 1, priceK: 39 },
+          { name: 'Sunflower Seeds', qty: 1, priceK: 20 }
+        ],
+        chat: [
+          { from: 'customer', type: 'text', content: 'Em đã chuyển khoản rồi ạ.' }
+        ]
+      },
+      {
+        id: 'BILL103',
+        status: 'processing',
+        createdAt: Date.now() - 60000,
+        items: [
+          { name: 'Mango Cream Cheese Tea', qty: 1, priceK: 45 }
+        ],
+        chat: [
+          { from: 'customer', type: 'text', content: 'Cho thêm ít đá nhé.' }
+        ]
+      },
+      {
+        id: 'BILL099',
+        status: 'completed',
+        createdAt: Date.now() - 3600000,
+        items: [
+          { name: 'Black Coffee', qty: 1, priceK: 29 }
+        ],
+        chat: [
+          { from: 'customer', type: 'text', content: 'Cảm ơn quán.' }
+        ]
+      }
+    ]
+
+    let selectedId = null
+    let audioEnabled = false
+
+    function vnd(k){ return (k*1000).toLocaleString('vi-VN') + ' đ' }
+    function totalK(order){ return order.items.reduce((s,i)=>s+i.qty*i.priceK,0) }
+    function el(tag, cls, html){ const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e }
+
+    function renderList(){
+      const root = document.getElementById('order-list')
+      root.innerHTML = ''
+      mockOrders
+        .sort((a,b)=>b.createdAt-a.createdAt)
+        .forEach(o=>{
+          const badge = statusMap[o.status]
+          const row = el('div','flex items-center justify-between rounded-xl bg-gray-900 px-3 py-3 cursor-pointer hover:bg-gray-700')
+          const left = el('div','')
+          left.appendChild(el('div','font-semibold', '#'+o.id))
+          left.appendChild(el('div','text-xs text-gray-400', new Date(o.createdAt).toLocaleTimeString()))
+          const right = el('div','flex items-center gap-3')
+          right.appendChild(el('div','text-sm', vnd(totalK(o))))
+          const st = el('span','px-2 py-1 rounded-lg text-xs '+badge.color, badge.label)
+          right.appendChild(st)
+          row.appendChild(left); row.appendChild(right)
+          row.addEventListener('click', ()=>selectOrder(o.id))
+          if(o.id===selectedId) row.classList.add('ring-2','ring-accent')
+          root.appendChild(row)
+        })
+    }
+
+    function renderDetail(){
+      const o = mockOrders.find(x=>x.id===selectedId)
+      const title = document.getElementById('detail-title')
+      const sub = document.getElementById('detail-sub')
+      const items = document.getElementById('detail-items')
+      const chat = document.getElementById('chat-log')
+      if(!o){ title.textContent='Chi tiết đơn'; sub.textContent=''; items.innerHTML=''; chat.innerHTML=''; return }
+      title.textContent = 'Đơn #' + o.id
+      sub.textContent = statusMap[o.status].label + ' · ' + vnd(totalK(o))
+      items.innerHTML = o.items.map(i=>`
+        <div class="flex items-center justify-between rounded-xl bg-gray-900 px-3 py-2">
+          <div>
+            <div class="font-medium">${i.name}</div>
+            <div class="text-xs text-gray-400">x${i.qty} · ${vnd(i.priceK)}</div>
+          </div>
+          <div class="text-sm">${vnd(i.qty*i.priceK)}</div>
+        </div>
+      `).join('')
+      chat.innerHTML = o.chat.map(m=>{
+        if(m.type==='image'){
+          return `<div class="max-w-[80%] ${m.from==='admin'?'ml-auto bg-accent text-white':'mr-auto bg-gray-700 text-gray-100'} px-3 py-2 rounded-lg"><img src="${m.content}" class="max-h-32 rounded-md" /></div>`
+        } else {
+          return `<div class="max-w-[80%] ${m.from==='admin'?'ml-auto bg-accent text-white':'mr-auto bg-gray-700 text-gray-100'} px-3 py-2 rounded-lg">${m.content}</div>`
+        }
+      }).join('')
+      chat.scrollTop = chat.scrollHeight
+    }
+
+    function selectOrder(id){
+      selectedId = id
+      renderList()
+      renderDetail()
+    }
+
+    function updateStatus(id, status){
+      const o = mockOrders.find(x=>x.id===id)
+      if(!o) return
+      o.status = status
+      renderList()
+      renderDetail()
+    }
+
+    function pushChat(from, content, type='text'){
+      const o = mockOrders.find(x=>x.id===selectedId)
+      if(!o) return
+      o.chat.push({ from, type, content })
+      renderDetail()
+    }
+
+    function playTing(){
+      if(!audioEnabled) return
+      try{
+        const ctx = new (window.AudioContext||window.webkitAudioContext)()
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type='sine'; osc.frequency.setValueAtTime(880, ctx.currentTime)
+        gain.gain.setValueAtTime(0.001, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime+0.01)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.2)
+        osc.connect(gain).connect(ctx.destination)
+        osc.start(); osc.stop(ctx.currentTime+0.22)
+      }catch(e){}
+    }
+
+    function simulateNewOrder(){
+      const id = 'BILL' + Math.floor(100000 + Math.random()*900000)
+      mockOrders.unshift({
+        id,
+        status: 'pending',
+        createdAt: Date.now(),
+        items: [{ name: 'Coconut Coffee', qty: 1, priceK: 39 }],
+        chat: [{ from: 'customer', type: 'text', content: 'Em mới thanh toán ạ.' }]
+      })
+      playTing()
+      renderList()
+    }
+
+    function exportDay(){
+      const rows = []
+      mockOrders.forEach(o=>{
+        const time = new Date(o.createdAt).toLocaleString('vi-VN')
+        const status = statusMap[o.status].label
+        const total = o.items.reduce((s,i)=>s+i.qty*i.priceK,0)*1000
+        o.items.forEach(i=>{
+          rows.push({
+            'Mã đơn': o.id,
+            'Trạng thái': status,
+            'Thời gian': time,
+            'Món': i.name,
+            'Số lượng': i.qty,
+            'Đơn giá (VND)': i.priceK*1000,
+            'Thành tiền (VND)': i.priceK*i.qty*1000,
+            'Tổng đơn (VND)': total
+          })
+        })
+      })
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Bao_cao_ngay')
+      XLSX.writeFile(wb, 'Bao_cao_don_hang.xlsx')
+    }
+
+    document.getElementById('enable-audio').addEventListener('click', ()=>{
+      audioEnabled = true
+    })
+    document.getElementById('export-day').addEventListener('click', exportDay)
+    document.getElementById('btn-approve').addEventListener('click', ()=>{ if(selectedId) updateStatus(selectedId,'processing') })
+    document.getElementById('btn-cancel').addEventListener('click', ()=>{ if(selectedId) updateStatus(selectedId,'pending') })
+    document.getElementById('btn-done').addEventListener('click', ()=>{ if(selectedId) updateStatus(selectedId,'completed') })
+
+    document.getElementById('chat-send').addEventListener('click', ()=>{
+      const input = document.getElementById('chat-input')
+      const text = input.value.trim()
+      if(!text) return
+      pushChat('admin', text)
+      input.value = ''
+    })
+    document.getElementById('chat-upload').addEventListener('change', (e)=>{
+      const f = e.target.files[0]
+      if(!f) return
+      const r = new FileReader()
+      r.onload = () => pushChat('admin', r.result, 'image')
+      r.readAsDataURL(f)
+    })
+
+    renderList()
+    if(mockOrders.length) selectOrder(mockOrders[0].id)
+    setTimeout(simulateNewOrder, 8000)
+  </script>
+</body>
+</html>
