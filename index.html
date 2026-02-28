@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>B.BLING Coffee & Eatery</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3E2723',
+            cream: '#F2E8DF',
+            accent: '#C2410C',
+            success: '#16A34A'
+          },
+          fontFamily: {
+            serif: ['Playfair Display', 'serif'],
+            sans: ['Montserrat', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body { height: 100%; }
+    .paper {
+      background: radial-gradient(1000px 700px at 20% 10%, rgba(0,0,0,0.05), transparent 60%),
+                  radial-gradient(800px 600px at 80% 20%, rgba(0,0,0,0.04), transparent 60%),
+                  linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02));
+    }
+    .botanical:before, .botanical:after{
+      content:"";
+      position: absolute;
+      pointer-events:none;
+      inset:auto auto 0 0;
+      width: 45%;
+      height: 140px;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width=\"800\" height=\"200\" viewBox=\"0 0 800 200\"><g fill=\"none\" stroke=\"%233E2723\" stroke-opacity=\"0.2\" stroke-width=\"2\"><path d=\"M10 190 C 50 150, 90 150, 120 190\"/><path d=\"M140 190 C 170 150, 210 150, 250 190\"/><path d=\"M270 190 C 300 150, 340 150, 380 190\"/><path d=\"M400 190 C 430 150, 470 150, 510 190\"/><path d=\"M530 190 C 560 150, 600 150, 640 190\"/><path d=\"M660 190 C 690 150, 730 150, 770 190\"/></g></svg>');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: left bottom;
+      opacity:.8;
+    }
+    .botanical:after{
+      inset:auto 0 0 auto;
+      transform: scaleX(-1);
+      background-position: right bottom;
+    }
+    .shadow-soft{ box-shadow: 0 6px 20px rgba(62,39,35,.12); }
+  </style>
+</head>
+<body class="min-h-full bg-cream text-primary font-sans paper">
+  <div class="relative min-h-screen botanical">
+    <header class="px-4 pt-6 pb-4 md:px-8">
+      <div class="mx-auto max-w-2xl text-center">
+        <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/70 backdrop-blur shadow-soft">
+          <h1 class="text-3xl md:text-4xl font-bold font-serif italic tracking-wide">B.BLING</h1>
+          <span class="text-sm uppercase tracking-[0.2em]">Coffee & Eatery</span>
+          <span class="ml-3 text-xs px-3 py-1 rounded-full bg-accent text-white">0985.679.565</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="px-4 pb-28 md:px-6">
+      <section class="mx-auto max-w-2xl">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="font-serif italic text-xl">Menu</h2>
+          <div class="text-xs text-primary/70">Vintage Minimalist</div>
+        </div>
+
+        <div id="menu-root" class="space-y-8"></div>
+      </section>
+    </main>
+
+    <div id="cart-bar" class="fixed bottom-3 inset-x-3 hidden">
+      <div class="mx-auto max-w-2xl">
+        <div class="flex items-center justify-between rounded-xl bg-primary text-cream px-4 py-3 shadow-soft transition-opacity duration-300">
+          <div class="text-sm"><span class="opacity-90">Tổng:</span> <span id="cart-total" class="font-semibold"></span></div>
+          <button id="order-now" class="px-4 py-2 rounded-lg bg-accent text-white font-semibold active:scale-95">ORDER NOW</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="sheet" class="fixed inset-x-0 bottom-0 translate-y-full transition-transform duration-300">
+      <div class="mx-auto max-w-2xl bg-white rounded-t-2xl shadow-soft p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-serif italic text-lg">Xác nhận đơn</h3>
+          <button id="close-sheet" class="text-primary/60 text-2xl leading-none">&times;</button>
+        </div>
+        <div id="sheet-list" class="divide-y divide-primary/10 max-h-60 overflow-y-auto"></div>
+        <div class="mt-3">
+          <label class="text-sm block mb-1">Ghi chú</label>
+          <textarea id="note" class="w-full rounded-lg border border-primary/20 p-3 outline-none focus:ring-2 focus:ring-accent/60"></textarea>
+        </div>
+        <div class="mt-3 flex items-center justify-between">
+          <div class="text-sm">Tổng cộng: <span id="sheet-total" class="font-semibold"></span></div>
+          <button id="confirm-order" class="px-4 py-2 rounded-lg bg-success text-white font-semibold active:scale-95">Xác nhận</button>
+        </div>
+      </div>
+    </div>
+
+    <button id="chat-toggle" class="fixed right-4 bottom-20 md:bottom-6 w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-soft active:scale-95">
+      <span class="text-2xl">✉</span>
+    </button>
+    <div id="chat-panel" class="hidden fixed right-4 bottom-36 md:bottom-24 w-[90%] max-w-[360px] rounded-xl bg-white shadow-soft p-3">
+      <div class="flex items-center justify-between mb-2">
+        <div class="font-serif italic">Hỗ trợ</div>
+        <button id="chat-close" class="text-primary/60 text-xl leading-none">&times;</button>
+      </div>
+      <div id="chat-log" class="h-48 overflow-y-auto space-y-2 text-sm p-2 bg-cream rounded-lg"></div>
+      <div class="mt-2 flex items-center gap-2">
+        <input id="chat-input" class="flex-1 rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn..." />
+        <label class="cursor-pointer px-3 py-2 rounded-lg bg-primary text-cream text-sm">
+          Upload
+          <input id="chat-upload" type="file" accept="image/*" class="hidden" />
+        </label>
+        <button id="chat-send" class="px-3 py-2 rounded-lg bg-accent text-white text-sm">Gửi</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    const categories = [
+      {
+        name: 'Coffee',
+        items: [
+          { id: 'coffee-black', name: 'Black Coffee', priceK: 29 },
+          { id: 'coffee-white', name: 'White Coffee', priceK: 29 },
+          { id: 'coffee-salted-almond', name: 'Salted Almond Coffee', priceK: 39 },
+          { id: 'coffee-coconut', name: 'Coconut Coffee', priceK: 39 },
+        ]
+      },
+      {
+        name: 'Trà hoa quả',
+        items: [
+          { id: 'tea-lotus-gold', name: 'Lotus Tea with Gold Jelly', priceK: 39 },
+          { id: 'tea-mango-cc', name: 'Mango Cream Cheese Tea', priceK: 45 },
+        ]
+      },
+      {
+        name: 'Sữa chua',
+        items: [
+          { id: 'yogurt-pp', name: 'Yogurt with Peach & Passionfruit', priceK: 49 },
+        ]
+      },
+      {
+        name: 'Đồ ăn vặt',
+        items: [
+          { id: 'snack-sunflower', name: 'Sunflower Seeds', priceK: 20 },
+          { id: 'snack-dried-beef', name: 'Dried Beef', priceK: 45 },
+        ]
+      }
+    ]
+
+    const state = {
+      cart: {}
+    }
+
+    const formatVND = k => (k * 1000).toLocaleString('vi-VN') + ' đ'
+
+    const menuRoot = document.getElementById('menu-root')
+    function renderMenu() {
+      menuRoot.innerHTML = ''
+      categories.forEach(cat => {
+        const section = document.createElement('div')
+        section.innerHTML = `
+          <h3 class="font-serif italic text-lg mb-3">${cat.name}</h3>
+          <div class="grid grid-cols-1 gap-3">
+            ${cat.items.map(i => `
+              <div class="flex items-center justify-between rounded-xl bg-white/70 backdrop-blur px-3 py-3 shadow-soft">
+                <div>
+                  <div class="font-semibold">${i.name}</div>
+                  <div class="text-sm text-primary/70">${i.priceK}k · ${formatVND(i.priceK)}</div>
+                </div>
+                <button data-id="${i.id}" class="add px-3 py-2 rounded-lg bg-primary text-cream active:scale-95">+</button>
+              </div>
+            `).join('')}
+          </div>
+        `
+        menuRoot.appendChild(section)
+      })
+      menuRoot.querySelectorAll('button.add').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id')
+          addToCart(id)
+        })
+      })
+    }
+
+    function findItemById(id){
+      for(const c of categories){
+        const f = c.items.find(i => i.id === id)
+        if(f) return f
+      }
+      return null
+    }
+
+    function addToCart(id){
+      const item = findItemById(id)
+      if(!item) return
+      if(!state.cart[id]) state.cart[id] = { ...item, qty: 0 }
+      state.cart[id].qty += 1
+      syncCartUI()
+    }
+
+    function changeQty(id, delta){
+      const e = state.cart[id]
+      if(!e) return
+      e.qty += delta
+      if(e.qty <= 0) delete state.cart[id]
+      syncCartUI()
+    }
+
+    const cartBar = document.getElementById('cart-bar')
+    const cartTotal = document.getElementById('cart-total')
+    const sheet = document.getElementById('sheet')
+    const sheetList = document.getElementById('sheet-list')
+    const sheetTotal = document.getElementById('sheet-total')
+    const orderNow = document.getElementById('order-now')
+    const closeSheet = document.getElementById('close-sheet')
+    const confirmOrder = document.getElementById('confirm-order')
+
+    function calcTotal(){
+      return Object.values(state.cart).reduce((s, it) => s + it.priceK * it.qty, 0)
+    }
+
+    function syncCartUI(){
+      const totalK = calcTotal()
+      if(totalK > 0){
+        cartBar.classList.remove('hidden')
+        cartTotal.textContent = formatVND(totalK)
+      } else {
+        cartBar.classList.add('hidden')
+      }
+    }
+
+    function openSheet(){
+      renderSheet()
+      sheet.classList.remove('translate-y-full')
+    }
+    function closeSheetFn(){
+      sheet.classList.add('translate-y-full')
+    }
+    function renderSheet(){
+      const items = Object.values(state.cart)
+      sheetList.innerHTML = items.length ? items.map(it => `
+        <div class="py-3 flex items-center justify-between">
+          <div>
+            <div class="font-medium">${it.name}</div>
+            <div class="text-xs text-primary/70">${formatVND(it.priceK)} x ${it.qty}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button data-id="${it.id}" class="dec w-8 h-8 rounded-lg bg-primary/10">-</button>
+            <div class="w-6 text-center">${it.qty}</div>
+            <button data-id="${it.id}" class="inc w-8 h-8 rounded-lg bg-primary text-cream">+</button>
+          </div>
+        </div>
+      `).join('') : '<div class="py-6 text-center text-sm text-primary/70">Chưa có món nào</div>'
+      sheetList.querySelectorAll('.inc').forEach(b => b.addEventListener('click', () => changeQty(b.dataset.id, 1)))
+      sheetList.querySelectorAll('.dec').forEach(b => b.addEventListener('click', () => changeQty(b.dataset.id, -1)))
+      sheetTotal.textContent = formatVND(calcTotal())
+    }
+
+    orderNow.addEventListener('click', openSheet)
+    closeSheet.addEventListener('click', closeSheetFn)
+    confirmOrder.addEventListener('click', () => {
+      const note = document.getElementById('note').value.trim()
+      console.log('order.submit', { items: state.cart, note })
+      state.cart = {}
+      syncCartUI()
+      closeSheetFn()
+      alert('Đã ghi nhận đơn. Sẽ tích hợp thanh toán và đồng bộ Firestore.')
+    })
+
+    const chatToggle = document.getElementById('chat-toggle')
+    const chatPanel = document.getElementById('chat-panel')
+    const chatClose = document.getElementById('chat-close')
+    const chatSend = document.getElementById('chat-send')
+    const chatInput = document.getElementById('chat-input')
+    const chatLog = document.getElementById('chat-log')
+    const chatUpload = document.getElementById('chat-upload')
+
+    function pushMsg(html){
+      const item = document.createElement('div')
+      item.className = 'max-w-[80%] ml-auto bg-accent text-white px-3 py-2 rounded-lg'
+      item.innerHTML = html
+      chatLog.appendChild(item)
+      chatLog.scrollTop = chatLog.scrollHeight
+    }
+    function pushReply(text){
+      const item = document.createElement('div')
+      item.className = 'max-w-[80%] mr-auto bg-white px-3 py-2 rounded-lg'
+      item.textContent = text
+      chatLog.appendChild(item)
+      chatLog.scrollTop = chatLog.scrollHeight
+    }
+
+    chatToggle.addEventListener('click', () => {
+      chatPanel.classList.toggle('hidden')
+    })
+    chatClose.addEventListener('click', () => chatPanel.classList.add('hidden'))
+    chatSend.addEventListener('click', () => {
+      const text = chatInput.value.trim()
+      if(!text) return
+      pushMsg(text)
+      chatInput.value = ''
+      setTimeout(() => pushReply('Cảm ơn bạn! Nhân viên sẽ phản hồi sớm.'), 400)
+    })
+    chatUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0]
+      if(!file) return
+      const reader = new FileReader()
+      reader.onload = () => pushMsg(`<img src="${reader.result}" class="max-h-32 rounded-md" />`)
+      reader.readAsDataURL(file)
+      setTimeout(() => pushReply('Ảnh đã nhận. Chờ xác minh.'), 600)
+    })
+
+    renderMenu()
+    syncCartUI()
+  </script>
+</body>
+</html>
