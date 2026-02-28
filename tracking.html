@@ -96,14 +96,18 @@
   <script>
     const params = new URLSearchParams(location.search)
     const orderId = params.get('orderId') || 'BILL102'
-    const demoItems = [
+    const fallbackItems = [
       { name: 'Salted Almond Coffee', qty: 1, priceK: 39 },
       { name: 'Mango Cream Cheese Tea', qty: 1, priceK: 45 },
     ]
     function formatVND(k){ return (k*1000).toLocaleString('vi-VN') + ' đ' }
     document.getElementById('order-id').textContent = `Mã đơn: #${orderId}`
+    const storeKey = 'order_' + orderId
+    let saved = null
+    try { saved = JSON.parse(sessionStorage.getItem(storeKey) || 'null') } catch(e){}
+    const items = saved?.items?.length ? saved.items : fallbackItems
     const list = document.getElementById('order-list')
-    list.innerHTML = demoItems.map(i => `
+    list.innerHTML = items.map(i => `
       <div class="py-2 flex items-center justify-between">
         <div>
           <div class="font-medium">${i.name}</div>
@@ -112,7 +116,7 @@
         <div class="text-sm">${formatVND(i.qty * i.priceK)}</div>
       </div>
     `).join('')
-    document.getElementById('order-total').textContent = formatVND(demoItems.reduce((s,i)=>s+i.qty*i.priceK,0))
+    document.getElementById('order-total').textContent = formatVND(items.reduce((s,i)=>s+i.qty*i.priceK,0))
 
     const wait = document.getElementById('status-wait')
     const ok = document.getElementById('status-success')

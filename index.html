@@ -121,6 +121,13 @@
       </div>
     </div>
   </div>
+  <footer class="px-4 pb-8 md:px-8">
+    <div class="mx-auto max-w-2xl text-center text-xs">
+      <a href="admin-login.html" class="text-primary/60 hover:text-primary underline-offset-4 hover:underline">
+        Hệ thống Quản trị
+      </a>
+    </div>
+  </footer>
 
   <script type="module">
     const categories = [
@@ -268,11 +275,14 @@
     closeSheet.addEventListener('click', closeSheetFn)
     confirmOrder.addEventListener('click', () => {
       const note = document.getElementById('note').value.trim()
-      console.log('order.submit', { items: state.cart, note })
-      state.cart = {}
-      syncCartUI()
-      closeSheetFn()
-      alert('Đã ghi nhận đơn. Sẽ tích hợp thanh toán và đồng bộ Firestore.')
+      const items = Object.values(state.cart).map(({ id, name, priceK, qty }) => ({ id, name, priceK, qty }))
+      if (!items.length) { closeSheetFn(); return }
+      const bill = 'BILL' + Date.now().toString().slice(-6)
+      const totalK = calcTotal()
+      const totalVND = totalK * 1000
+      sessionStorage.setItem('order_' + bill, JSON.stringify({ items, note, totalK, totalVND }))
+      const qs = new URLSearchParams({ bill, amount: String(totalVND), content: 'PAY ' + bill }).toString()
+      location.href = 'payment.html?' + qs
     })
 
     const chatToggle = document.getElementById('chat-toggle')
