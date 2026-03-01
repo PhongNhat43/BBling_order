@@ -44,4 +44,3 @@
 ## Comment & Log
 - Tránh comment rườm rà; đặt tên tốt thay cho comment.
 - console.log chỉ dùng cho debug tạm; xóa trước khi phát hành.
-

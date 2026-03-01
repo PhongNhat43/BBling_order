@@ -2,38 +2,6 @@
 
 const PLACEHOLDER_IMG = 'https://images.unsplash.com/photo-1500336624523-d727130c3328?auto=format&fit=crop&w=800&q=60';
 
-const categories = [
-  {
-    name: 'Coffee',
-    items: [
-      { id: 'coffee-black', name: 'Black Coffee', priceK: 29, img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80', desc: 'Hương vị cổ điển, đậm đà.' },
-      { id: 'coffee-white', name: 'White Coffee', priceK: 29, img: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80', desc: 'Dịu nhẹ với sữa, cân bằng vị.' },
-      { id: 'coffee-salted-almond', name: 'Salted Almond Coffee', priceK: 39, img: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80', desc: 'Kem muối và hạnh nhân thơm béo.' },
-      { id: 'coffee-coconut', name: 'Coconut Coffee', priceK: 39, img: 'https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=600&q=80', desc: 'Cà phê quyện dừa mát lành.' },
-    ]
-  },
-  {
-    name: 'Trà hoa quả',
-    items: [
-      { id: 'tea-lotus-gold', name: 'Lotus Tea with Gold Jelly', priceK: 39, img: 'https://images.unsplash.com/photo-1504544750208-dc0358e63f7f?auto=format&fit=crop&w=600&q=80', desc: 'Trà sen thanh mát kèm thạch vàng.' },
-      { id: 'tea-mango-cc', name: 'Mango Cream Cheese Tea', priceK: 45, img: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80', desc: 'Xoài chín và kem cheese béo mịn.' },
-    ]
-  },
-  {
-    name: 'Sữa chua',
-    items: [
-      { id: 'yogurt-pp', name: 'Yogurt with Peach & Passionfruit', priceK: 49, img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80', desc: 'Sữa chua sánh mịn cùng đào và chanh dây.' },
-    ]
-  },
-  {
-    name: 'Đồ ăn vặt',
-    items: [
-      { id: 'snack-sunflower', name: 'Sunflower Seeds', priceK: 20, img: 'https://images.unsplash.com/photo-1505577058444-a3dab90d4253?auto=format&fit=crop&w=600&q=80', desc: 'Hướng dương rang vị nguyên bản.' },
-      { id: 'snack-dried-beef', name: 'Dried Beef', priceK: 45, img: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=600&q=80', desc: 'Bò khô đậm vị truyền thống.' },
-    ]
-  }
-];
-
 const state = { cart: {} };
 
 function formatVND(k) { return (k * 1000).toLocaleString('vi-VN') + ' đ'; }
@@ -47,16 +15,18 @@ function setImgFallback(img) {
 }
 
 function findItemById(id) {
+  const categories = getMenuForCustomer();
   for (const c of categories) {
     const f = c.items.find(i => i.id === id);
     if (f) return f;
-    }
+  }
   return null;
 }
 
 const menuRoot = document.getElementById('menu-root');
 
 function renderMenu() {
+  const categories = getMenuForCustomer();
   menuRoot.innerHTML = '';
   categories.forEach(cat => {
     const section = document.createElement('div');
@@ -244,6 +214,13 @@ function renderSheet() {
       row.className = 'py-3 flex items-center justify-between';
 
       const left = document.createElement('div');
+      left.className = 'flex items-center gap-3';
+      const thumb = document.createElement('img');
+      thumb.src = it.img || '';
+      thumb.alt = '';
+      thumb.className = 'w-11 h-11 rounded-xl object-cover flex-shrink-0 border border-primary/10';
+      setImgFallback(thumb);
+      const textCol = document.createElement('div');
       const name = document.createElement('div');
       name.className = 'font-medium';
       const nameText = it.options && it.options.length ? `${it.name} · ${it.options.join(', ')}` : it.name;
@@ -253,15 +230,17 @@ function renderSheet() {
       sub.className = 'text-xs text-primary/70';
       sub.textContent = `${formatVND(it.priceK)} x ${it.qty}`;
 
-      left.appendChild(name);
-      left.appendChild(sub);
+      textCol.appendChild(name);
+      textCol.appendChild(sub);
 
       if (it.note) {
         const note = document.createElement('div');
         note.className = 'text-xs text-primary/50';
         note.textContent = `Ghi chú: ${it.note}`;
-        left.appendChild(note);
+        textCol.appendChild(note);
       }
+      left.appendChild(thumb);
+      left.appendChild(textCol);
 
       const right = document.createElement('div');
       right.className = 'flex items-center gap-2';
@@ -304,7 +283,7 @@ orderNow.addEventListener('click', openSheet);
 closeSheet.addEventListener('click', closeSheetFn);
 confirmOrder.addEventListener('click', () => {
   const note = document.getElementById('note').value.trim();
-  const items = Object.values(state.cart).map(({ id, name, priceK, qty }) => ({ id, name, priceK, qty }));
+  const items = Object.values(state.cart).map(({ id, name, priceK, qty, img }) => ({ id, name, priceK, qty, img }));
   if (!items.length) { closeSheetFn(); return; }
   const bill = 'BILL' + Date.now().toString().slice(-6);
   const totalK = calcTotal();
@@ -316,3 +295,4 @@ confirmOrder.addEventListener('click', () => {
 
 renderMenu();
 syncCartUI();
+window.addEventListener('bb-menu-updated', function () { renderMenu(); });

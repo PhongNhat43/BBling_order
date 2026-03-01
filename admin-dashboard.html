@@ -3,15 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin Dashboard | B.BLING</title>
+  <title>Quản trị | B.BLING</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          colors: { primary: '#3E2723', cream: '#F2E8DF', accent: '#C2410C', success: '#16A34A', darkbg: '#1F2937' },
+          colors: { primary: '#3E2723', cream: '#F2E8DF', accent: '#C2410C', success: '#16A34A', yellowx: '#F59E0B', darkbg: '#1F2937' },
           fontFamily: { serif: ['Playfair Display','serif'], sans: ['Montserrat','sans-serif'] }
         }
       }
@@ -23,262 +28,167 @@
   </style>
 </head>
 <body class="min-h-full bg-darkbg text-gray-100 font-sans">
-  <header class="px-4 py-4 border-b border-white/10">
-    <div class="max-w-6xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="font-serif italic text-2xl">B.BLING</div>
-        <span class="text-xs uppercase tracking-[0.2em] text-gray-400">Admin</span>
+  <div class="relative min-h-screen">
+    <header class="px-4 pt-6 pb-4 md:px-8 border-b border-white/10">
+      <div class="max-w-6xl mx-auto flex items-center justify-between">
+        <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-gray-800 border border-white/10">
+          <div class="font-serif italic text-2xl">B.BLING</div>
+          <span class="text-xs uppercase tracking-[0.2em] text-gray-400">Quản trị</span>
+          <span class="ml-2 text-xs px-2 py-1 rounded-lg bg-gray-700">v20260301-3</span>
+        </div>
+        <a href="index.html" class="text-xs px-3 py-1 rounded-full bg-accent text-white hover:opacity-90 transition">Về trang khách</a>
       </div>
-      <a href="index.html" class="text-xs text-gray-300 hover:text-white underline underline-offset-4">Về trang khách</a>
-    </div>
-  </header>
+    </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-    <section class="bg-gray-800 rounded-2xl p-4 shadow-soft">
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-3">
+    <nav class="max-w-6xl mx-auto px-4 md:px-8 mb-4 mt-4">
+      <div class="flex gap-2 flex-wrap">
+        <button data-tab="orders" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">Đơn hàng</button>
+        <button data-tab="chat" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">Chat</button>
+        <button data-tab="menu" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">Quản lý Menu</button>
+        <button data-tab="report" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">Báo cáo</button>
+        <button data-tab="settings" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">Cài đặt</button>
+      </div>
+    </nav>
+    <div id="admin-debug" class="max-w-6xl mx-auto px-4 md:px-8 mb-2 text-xs text-gray-500"></div>
+
+    <main class="max-w-6xl mx-auto px-4 md:px-8 pb-10 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <section id="tab-orders" class="rounded-2xl bg-gray-800 border border-white/10 p-4 shadow-soft">
+        <div class="flex items-center justify-between mb-3">
           <div class="font-semibold">Đơn hàng</div>
-          <a href="menu-management.html" class="text-xs px-3 py-1 rounded-lg border border-white/20 hover:bg-gray-700">Quản lý Menu</a>
-        </div>
-        <div class="flex items-center gap-2">
-          <button id="export-day" class="px-3 py-1 rounded-lg bg-accent text-white text-xs">Xuất báo cáo ngày</button>
-          <button id="enable-audio" class="px-3 py-1 rounded-lg bg-primary text-cream text-xs">Bật âm thanh</button>
-        </div>
-      </div>
-      <div id="order-list" class="space-y-2 max-h-[70vh] overflow-y-auto"></div>
-    </section>
-
-    <section class="bg-gray-800 rounded-2xl p-0 shadow-soft overflow-hidden">
-      <div class="p-4 border-b border-white/10">
-        <div id="detail-title" class="font-semibold">Chi tiết đơn</div>
-        <div id="detail-sub" class="text-xs text-gray-400"></div>
-      </div>
-      <div class="p-4 grid grid-rows-[auto_1fr_auto] gap-4 h-[70vh]">
-        <div id="detail-items" class="space-y-2"></div>
-
-        <div class="rounded-xl bg-gray-900 p-3">
-          <div class="text-xs text-gray-400 mb-2">Chat 1-1</div>
-          <div id="chat-log" class="h-40 overflow-y-auto space-y-2 p-2 bg-gray-800 rounded-lg"></div>
-          <div class="mt-2 flex items-center gap-2">
-            <input id="chat-input" class="flex-1 rounded-lg border border-white/10 bg-gray-900 text-gray-100 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn..." />
-            <label class="cursor-pointer px-3 py-2 rounded-lg bg-primary text-cream text-sm">
-              Upload
-              <input id="chat-upload" type="file" accept="image/*" class="hidden" />
-            </label>
-            <button id="chat-send" class="px-3 py-2 rounded-lg bg-accent text-white text-sm">Gửi</button>
+          <div class="flex items-center gap-2">
+            <button id="export-day" class="px-3 py-1 rounded-lg bg-accent text-white text-xs">Xuất báo cáo</button>
+            <button id="enable-audio" class="px-3 py-1 rounded-lg bg-gray-600 text-gray-200 text-xs">Bật âm thanh</button>
           </div>
         </div>
-
-        <div class="flex items-center justify-end gap-2">
-          <button id="btn-cancel" class="px-4 py-2 rounded-lg bg-red-600 text-white">Hủy đơn</button>
-          <button id="btn-approve" class="px-4 py-2 rounded-lg bg-yellow-500 text-black">Duyệt đơn</button>
-          <button id="btn-done" class="px-4 py-2 rounded-lg bg-success text-white">Hoàn thành</button>
+        <div class="mb-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <select id="filter-date" class="rounded-lg border border-white/20 bg-gray-700 text-gray-200 p-2 text-xs">
+            <option value="all">Tất cả đơn</option>
+            <option value="today">Hôm nay</option>
+            <option value="yesterday">Hôm qua</option>
+            <option value="week">7 ngày qua</option>
+            <option value="month">30 ngày qua</option>
+          </select>
+          <select id="filter-status" class="rounded-lg border border-white/20 bg-gray-700 text-gray-200 p-2 text-xs">
+            <option value="">Tất cả trạng thái</option>
+            <option value="unverified_cash">Chờ xác nhận (TM)</option>
+            <option value="pending_transfer">Chờ xác minh (CK)</option>
+            <option value="processing">Đang pha chế</option>
+            <option value="completed">Hoàn thành</option>
+            <option value="failed">Thất bại</option>
+            <option value="canceled">Đã hủy</option>
+          </select>
+          <select id="filter-method" class="rounded-lg border border-white/20 bg-gray-700 text-gray-200 p-2 text-xs">
+            <option value="">Tất cả hình thức</option>
+            <option value="cash">Tiền mặt</option>
+            <option value="transfer">Chuyển khoản</option>
+          </select>
+          <input id="filter-search" class="rounded-lg border border-white/20 bg-gray-700 text-gray-200 p-2 text-xs placeholder-gray-500" placeholder="Tìm theo mã đơn...">
         </div>
-      </div>
-    </section>
-  </main>
+        <div id="order-list" class="space-y-3 max-h-[70vh] overflow-y-auto"></div>
+      </section>
 
-  <script>
-    const statusMap = {
-      pending: { label: 'Chờ duyệt', color: 'bg-red-600' },
-      processing: { label: 'Đang làm', color: 'bg-yellow-500 text-black' },
-      completed: { label: 'Hoàn thành', color: 'bg-green-600' }
-    }
+      <section id="tab-chat" class="rounded-2xl bg-gray-800 border border-white/10 p-4 shadow-soft hidden md:col-span-2">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div class="lg:col-span-4">
+            <div class="font-semibold mb-2 text-sm flex items-center justify-between">
+              <span>Đơn hàng cần xử lý</span>
+              <span id="chat-count" class="text-xs text-gray-500"></span>
+            </div>
+            <div id="chat-threads" class="space-y-2 max-h-[60vh] overflow-y-auto rounded-lg border border-white/10 bg-gray-900/50 p-2"></div>
+          </div>
+          <div class="lg:col-span-8">
+            <div id="chat-order-info" class="rounded-xl bg-gray-900/70 border border-white/10 p-4 mb-3 hidden">
+              <div class="font-semibold mb-2" id="detail-title">Chọn đơn để xem chi tiết</div>
+              <div id="detail-customer" class="text-xs text-gray-400 mb-2"></div>
+              <div id="detail-items" class="space-y-2 mb-2"></div>
+              <div class="flex items-center justify-between text-sm">
+                <span>Tổng:</span>
+                <span id="detail-total" class="font-semibold"></span>
+              </div>
+              <div class="mt-2">
+                <div class="text-xs text-gray-500 mb-1">Ảnh biên lai</div>
+                <img id="bill-preview" class="w-full max-h-32 object-contain rounded-lg border border-white/10 bg-gray-800 hidden" alt="">
+              </div>
+            </div>
+            <div id="chat-empty" class="rounded-xl bg-gray-900/50 border border-dashed border-white/20 p-8 text-center text-gray-500 text-sm mb-3">
+              Chọn đơn hàng bên trái để xem chi tiết và phản hồi khách
+            </div>
+            <div class="rounded-xl bg-gray-900/70 border border-white/10 p-4">
+              <div class="font-semibold mb-2 text-sm">Tin nhắn</div>
+              <div id="chat-log" class="h-56 overflow-y-auto space-y-2 p-3 bg-gray-900/50 rounded-lg mb-3"></div>
+              <div class="flex items-center gap-2 mb-2">
+                <input id="chat-input" class="flex-1 rounded-lg border border-white/20 bg-gray-800 text-gray-200 p-2 text-sm placeholder-gray-500 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn phản hồi..." />
+                <label class="cursor-pointer px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 text-sm shrink-0">Tải ảnh
+                  <input id="chat-upload" type="file" accept="image/*" class="hidden" />
+                </label>
+                <button id="chat-send" class="px-4 py-2 rounded-lg bg-accent text-white text-sm shrink-0">Gửi</button>
+              </div>
+              <div class="text-xs text-gray-500 mb-1">Phản hồi nhanh</div>
+              <div class="flex flex-wrap gap-2" id="quick-replies">
+                <button class="qr px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">Đã xác minh, đơn đang pha chế</button>
+                <button class="qr px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">Đơn đã xác nhận. Cảm ơn bạn!</button>
+                <button class="qr px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">Vui lòng chờ ít phút</button>
+              </div>
+              <div class="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-white/10">
+                <button id="btn-fail" class="px-4 py-2 rounded-lg bg-red-600/80 hover:bg-red-600 text-white text-sm">Thất bại</button>
+                <button id="btn-cancel" class="px-4 py-2 rounded-lg bg-red-800/80 hover:bg-red-800 text-white text-sm">Hủy</button>
+                <button id="btn-approve" class="px-4 py-2 rounded-lg bg-yellowx text-gray-900 font-medium text-sm">Duyệt</button>
+                <button id="btn-done" class="px-4 py-2 rounded-lg bg-success text-white text-sm">Hoàn thành</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-    const mockOrders = [
-      {
-        id: 'BILL102',
-        status: 'pending',
-        createdAt: Date.now() - 120000,
-        items: [
-          { name: 'Salted Almond Coffee', qty: 1, priceK: 39 },
-          { name: 'Sunflower Seeds', qty: 1, priceK: 20 }
-        ],
-        chat: [
-          { from: 'customer', type: 'text', content: 'Em đã chuyển khoản rồi ạ.' }
-        ]
-      },
-      {
-        id: 'BILL103',
-        status: 'processing',
-        createdAt: Date.now() - 60000,
-        items: [
-          { name: 'Mango Cream Cheese Tea', qty: 1, priceK: 45 }
-        ],
-        chat: [
-          { from: 'customer', type: 'text', content: 'Cho thêm ít đá nhé.' }
-        ]
-      },
-      {
-        id: 'BILL099',
-        status: 'completed',
-        createdAt: Date.now() - 3600000,
-        items: [
-          { name: 'Black Coffee', qty: 1, priceK: 29 }
-        ],
-        chat: [
-          { from: 'customer', type: 'text', content: 'Cảm ơn quán.' }
-        ]
-      }
-    ]
-
-    let selectedId = null
-    let audioEnabled = false
-
-    function vnd(k){ return (k*1000).toLocaleString('vi-VN') + ' đ' }
-    function totalK(order){ return order.items.reduce((s,i)=>s+i.qty*i.priceK,0) }
-    function el(tag, cls, html){ const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e }
-
-    function renderList(){
-      const root = document.getElementById('order-list')
-      root.innerHTML = ''
-      mockOrders
-        .sort((a,b)=>b.createdAt-a.createdAt)
-        .forEach(o=>{
-          const badge = statusMap[o.status]
-          const row = el('div','flex items-center justify-between rounded-xl bg-gray-900 px-3 py-3 cursor-pointer hover:bg-gray-700')
-          const left = el('div','')
-          left.appendChild(el('div','font-semibold', '#'+o.id))
-          left.appendChild(el('div','text-xs text-gray-400', new Date(o.createdAt).toLocaleTimeString()))
-          const right = el('div','flex items-center gap-3')
-          right.appendChild(el('div','text-sm', vnd(totalK(o))))
-          const st = el('span','px-2 py-1 rounded-lg text-xs '+badge.color, badge.label)
-          right.appendChild(st)
-          row.appendChild(left); row.appendChild(right)
-          row.addEventListener('click', ()=>selectOrder(o.id))
-          if(o.id===selectedId) row.classList.add('ring-2','ring-accent')
-          root.appendChild(row)
-        })
-    }
-
-    function renderDetail(){
-      const o = mockOrders.find(x=>x.id===selectedId)
-      const title = document.getElementById('detail-title')
-      const sub = document.getElementById('detail-sub')
-      const items = document.getElementById('detail-items')
-      const chat = document.getElementById('chat-log')
-      if(!o){ title.textContent='Chi tiết đơn'; sub.textContent=''; items.innerHTML=''; chat.innerHTML=''; return }
-      title.textContent = 'Đơn #' + o.id
-      sub.textContent = statusMap[o.status].label + ' · ' + vnd(totalK(o))
-      items.innerHTML = o.items.map(i=>`
-        <div class="flex items-center justify-between rounded-xl bg-gray-900 px-3 py-2">
+      <section id="tab-menu" class="rounded-2xl bg-gray-800 border border-white/10 p-4 shadow-soft hidden md:col-span-2">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-semibold">Quản lý Menu</div>
+          <div class="flex items-center gap-2">
+            <button id="add-cat" class="px-3 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600">+ Danh mục</button>
+            <button id="add-item" class="px-3 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600">+ Món</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <div class="font-medium">${i.name}</div>
-            <div class="text-xs text-gray-400">x${i.qty} · ${vnd(i.priceK)}</div>
+            <div class="text-sm mb-2 text-gray-400">Danh mục</div>
+            <div id="cat-list" class="space-y-2"></div>
           </div>
-          <div class="text-sm">${vnd(i.qty*i.priceK)}</div>
+          <div>
+            <div class="text-sm mb-2 text-gray-400">Món</div>
+            <div id="item-list" class="space-y-2"></div>
+          </div>
         </div>
-      `).join('')
-      chat.innerHTML = o.chat.map(m=>{
-        if(m.type==='image'){
-          return `<div class="max-w-[80%] ${m.from==='admin'?'ml-auto bg-accent text-white':'mr-auto bg-gray-700 text-gray-100'} px-3 py-2 rounded-lg"><img src="${m.content}" class="max-h-32 rounded-md" /></div>`
-        } else {
-          return `<div class="max-w-[80%] ${m.from==='admin'?'ml-auto bg-accent text-white':'mr-auto bg-gray-700 text-gray-100'} px-3 py-2 rounded-lg">${m.content}</div>`
-        }
-      }).join('')
-      chat.scrollTop = chat.scrollHeight
-    }
+        <div id="modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+          <div class="bg-gray-800 border border-white/20 rounded-xl p-5 w-full max-w-md shadow-2xl">
+            <div class="font-semibold mb-3" id="modal-title"></div>
+            <div id="modal-body" class="space-y-3"></div>
+            <div class="flex justify-end gap-2 mt-4">
+              <button id="modal-cancel" class="px-4 py-2 rounded-lg border border-white/20 hover:bg-gray-700">Hủy</button>
+              <button id="modal-ok" class="px-4 py-2 rounded-lg bg-accent text-white hover:opacity-90">Lưu</button>
+            </div>
+          </div>
+        </div>
+      </section>
 
-    function selectOrder(id){
-      selectedId = id
-      renderList()
-      renderDetail()
-    }
+      <section id="tab-report" class="rounded-2xl bg-gray-800 border border-white/10 p-4 shadow-soft hidden">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-semibold">Báo cáo</div>
+          <button id="export-day-2" class="px-3 py-1 rounded-lg bg-accent text-white text-xs">Xuất Excel</button>
+        </div>
+        <div id="report-box" class="space-y-2 text-sm text-gray-300"></div>
+      </section>
 
-    function updateStatus(id, status){
-      const o = mockOrders.find(x=>x.id===id)
-      if(!o) return
-      o.status = status
-      renderList()
-      renderDetail()
-    }
-
-    function pushChat(from, content, type='text'){
-      const o = mockOrders.find(x=>x.id===selectedId)
-      if(!o) return
-      o.chat.push({ from, type, content })
-      renderDetail()
-    }
-
-    function playTing(){
-      if(!audioEnabled) return
-      try{
-        const ctx = new (window.AudioContext||window.webkitAudioContext)()
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.type='sine'; osc.frequency.setValueAtTime(880, ctx.currentTime)
-        gain.gain.setValueAtTime(0.001, ctx.currentTime)
-        gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime+0.01)
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.2)
-        osc.connect(gain).connect(ctx.destination)
-        osc.start(); osc.stop(ctx.currentTime+0.22)
-      }catch(e){}
-    }
-
-    function simulateNewOrder(){
-      const id = 'BILL' + Math.floor(100000 + Math.random()*900000)
-      mockOrders.unshift({
-        id,
-        status: 'pending',
-        createdAt: Date.now(),
-        items: [{ name: 'Coconut Coffee', qty: 1, priceK: 39 }],
-        chat: [{ from: 'customer', type: 'text', content: 'Em mới thanh toán ạ.' }]
-      })
-      playTing()
-      renderList()
-    }
-
-    function exportDay(){
-      const rows = []
-      mockOrders.forEach(o=>{
-        const time = new Date(o.createdAt).toLocaleString('vi-VN')
-        const status = statusMap[o.status].label
-        const total = o.items.reduce((s,i)=>s+i.qty*i.priceK,0)*1000
-        o.items.forEach(i=>{
-          rows.push({
-            'Mã đơn': o.id,
-            'Trạng thái': status,
-            'Thời gian': time,
-            'Món': i.name,
-            'Số lượng': i.qty,
-            'Đơn giá (VND)': i.priceK*1000,
-            'Thành tiền (VND)': i.priceK*i.qty*1000,
-            'Tổng đơn (VND)': total
-          })
-        })
-      })
-      const ws = XLSX.utils.json_to_sheet(rows)
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, 'Bao_cao_ngay')
-      XLSX.writeFile(wb, 'Bao_cao_don_hang.xlsx')
-    }
-
-    document.getElementById('enable-audio').addEventListener('click', ()=>{
-      audioEnabled = true
-    })
-    document.getElementById('export-day').addEventListener('click', exportDay)
-    document.getElementById('btn-approve').addEventListener('click', ()=>{ if(selectedId) updateStatus(selectedId,'processing') })
-    document.getElementById('btn-cancel').addEventListener('click', ()=>{ if(selectedId) updateStatus(selectedId,'pending') })
-    document.getElementById('btn-done').addEventListener('click', ()=>{ if(selectedId) updateStatus(selectedId,'completed') })
-
-    document.getElementById('chat-send').addEventListener('click', ()=>{
-      const input = document.getElementById('chat-input')
-      const text = input.value.trim()
-      if(!text) return
-      pushChat('admin', text)
-      input.value = ''
-    })
-    document.getElementById('chat-upload').addEventListener('change', (e)=>{
-      const f = e.target.files[0]
-      if(!f) return
-      const r = new FileReader()
-      r.onload = () => pushChat('admin', r.result, 'image')
-      r.readAsDataURL(f)
-    })
-
-    renderList()
-    if(mockOrders.length) selectOrder(mockOrders[0].id)
-    setTimeout(simulateNewOrder, 8000)
-  </script>
+      <section id="tab-settings" class="rounded-2xl bg-gray-800 border border-white/10 p-4 shadow-soft hidden">
+        <div class="font-semibold mb-3">Cài đặt</div>
+        <div class="space-y-2">
+          <input id="store-name" class="w-full rounded-lg border border-white/20 bg-gray-700 text-gray-200 p-2 placeholder-gray-500" placeholder="Tên quán">
+          <input id="store-hotline" class="w-full rounded-lg border border-white/20 bg-gray-700 text-gray-200 p-2 placeholder-gray-500" placeholder="Hotline">
+          <button id="save-settings" class="px-4 py-2 rounded-lg bg-accent text-white">Lưu</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="menu-store.js" defer></script>
+  <script src="admin.js?v=20260301-2" defer></script>
 </body>
 </html>

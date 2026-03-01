@@ -38,4 +38,3 @@
 ## Âm thanh & Quyền người dùng
 - Chỉ phát âm khi có thao tác người dùng (click) để tuân thủ chính sách trình duyệt.
 - Không yêu cầu quyền không cần thiết.
-

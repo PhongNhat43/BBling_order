@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tra cứu đơn | B.BLING</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -32,7 +36,7 @@
       <div class="text-center mb-4">
         <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/70 backdrop-blur shadow-soft">
           <div class="font-serif italic text-2xl">B.BLING</div>
-          <span class="text-xs uppercase tracking-[0.2em]">Tracking</span>
+          <span class="text-xs uppercase tracking-[0.2em]">Theo dõi</span>
         </div>
       </div>
 
@@ -49,7 +53,7 @@
             <svg class="w-5 h-5 animate-spin text-accent" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
           </div>
           <div>
-            <div class="font-medium">Đang chờ quầy xác nhận...</div>
+            <div class="font-medium" id="status-text">Đang chờ quầy xác nhận...</div>
             <div class="text-xs text-primary/70">Vui lòng giữ kết nối, trạng thái cập nhật theo thời gian thực</div>
           </div>
         </div>
@@ -63,11 +67,26 @@
             <div class="text-xs text-primary/70">Bạn sẽ nhận thông báo khi món đã sẵn sàng</div>
           </div>
         </div>
+        <div id="status-fail" class="hidden items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center">
+            <svg class="w-6 h-6 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </div>
+          <div>
+            <div class="font-medium" id="fail-title">Đơn hàng chưa được xác nhận</div>
+            <div class="text-xs text-primary/70" id="fail-desc">Vui lòng liên hệ quầy hoặc mở chat để được hỗ trợ.</div>
+          </div>
+        </div>
       </div>
 
-      <div class="rounded-2xl bg-white p-4 shadow-soft">
-        <div class="font-serif italic mb-2">Chi tiết đơn</div>
-        <div id="order-id" class="text-xs text-primary/70 mb-2"></div>
+      <div id="order-box" class="rounded-2xl bg-white p-4 shadow-soft mb-4">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="font-serif italic mb-1">Chi tiết đơn</div>
+            <div id="order-id" class="text-xs text-primary/70">Mã đơn:</div>
+          </div>
+          <div id="method-badge" class="text-xs px-2 py-1 rounded-lg bg-cream border border-primary/10"></div>
+        </div>
+        <div id="customer" class="mt-2 text-xs text-primary/80"></div>
         <div id="order-list" class="divide-y divide-primary/10"></div>
         <div class="mt-3 text-right text-sm">Tổng cộng: <span id="order-total" class="font-semibold"></span></div>
       </div>
@@ -86,7 +105,7 @@
     <div class="mt-2 flex items-center gap-2">
       <input id="chat-input" class="flex-1 rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn..." />
       <label class="cursor-pointer px-3 py-2 rounded-lg bg-primary text-cream text-sm">
-        Upload
+        Tải ảnh
         <input id="chat-upload" type="file" accept="image/*" class="hidden" />
       </label>
       <button id="chat-send" class="px-3 py-2 rounded-lg bg-accent text-white text-sm">Gửi</button>
@@ -95,87 +114,128 @@
 
   <script>
     const params = new URLSearchParams(location.search)
-    const orderId = params.get('orderId') || 'BILL102'
-    const fallbackItems = [
-      { name: 'Salted Almond Coffee', qty: 1, priceK: 39 },
-      { name: 'Mango Cream Cheese Tea', qty: 1, priceK: 45 },
-    ]
-    function formatVND(k){ return (k*1000).toLocaleString('vi-VN') + ' đ' }
-    document.getElementById('order-id').textContent = `Mã đơn: #${orderId}`
-    const storeKey = 'order_' + orderId
-    let saved = null
-    try { saved = JSON.parse(sessionStorage.getItem(storeKey) || 'null') } catch(e){}
-    const items = saved?.items?.length ? saved.items : fallbackItems
-    const list = document.getElementById('order-list')
-    list.innerHTML = items.map(i => `
-      <div class="py-2 flex items-center justify-between">
-        <div>
-          <div class="font-medium">${i.name}</div>
-          <div class="text-xs text-primary/70">x${i.qty} · ${formatVND(i.priceK)}</div>
-        </div>
-        <div class="text-sm">${formatVND(i.qty * i.priceK)}</div>
-      </div>
-    `).join('')
-    document.getElementById('order-total').textContent = formatVND(items.reduce((s,i)=>s+i.qty*i.priceK,0))
+    const mode = params.get('mode') || ''
+    const orderId = params.get('orderId') || (mode === 'search' ? '' : '')
+    const PLACEHOLDER_IMG = 'https://images.unsplash.com/photo-1500336624523-d727130c3328?auto=format&fit=crop&w=800&q=60'
 
-    const wait = document.getElementById('status-wait')
-    const ok = document.getElementById('status-success')
-    function setSuccess(){
+    function formatVND(k) { return (k * 1000).toLocaleString('vi-VN') + ' đ' }
+
+    function imgEl(src) {
+      const im = document.createElement('img')
+      im.src = src || PLACEHOLDER_IMG
+      im.alt = ''
+      im.className = 'w-10 h-10 rounded-xl object-cover border border-primary/10'
+      im.onerror = () => { im.src = PLACEHOLDER_IMG }
+      return im
+    }
+
+    function renderOrder(data) {
+      const items = data?.items || []
+      const customer = data?.customer || {}
+      const method = data?.method || 'cash'
+      const total = data?.totalK ? data.totalK * 1000 : items.reduce((s, i) => s + (i.qty || 0) * (i.priceK || 0) * 1000, 0)
+      document.getElementById('order-id').textContent = orderId ? 'Mã đơn: #' + orderId : ''
+      const badge = document.getElementById('method-badge')
+      badge.textContent = method === 'transfer' ? 'Chuyển khoản' : 'Tiền mặt'
+      badge.className = 'text-xs px-2 py-1 rounded-lg ' + (method === 'transfer' ? 'bg-yellow-50' : 'bg-orange-50') + ' border border-primary/10'
+      const custEl = document.getElementById('customer')
+      const loc = [customer.city, customer.district, customer.ward].filter(Boolean).join(' · ')
+      custEl.textContent = [customer.name, customer.phone, customer.address, loc].filter(Boolean).join(' · ') || 'Chưa có thông tin'
+      const list = document.getElementById('order-list')
+      list.innerHTML = ''
+      items.forEach(i => {
+        const row = document.createElement('div')
+        row.className = 'py-2 flex items-center justify-between'
+        const left = document.createElement('div')
+        left.className = 'flex items-center gap-3'
+        left.appendChild(imgEl(i.img))
+        const txt = document.createElement('div')
+        const name = document.createElement('div')
+        name.className = 'font-medium'
+        name.textContent = i.name
+        const sub = document.createElement('div')
+        sub.className = 'text-xs text-primary/70'
+        sub.textContent = 'x' + (i.qty || 1) + ' · ' + formatVND(i.priceK || 0)
+        txt.appendChild(name)
+        txt.appendChild(sub)
+        left.appendChild(txt)
+        const right = document.createElement('div')
+        right.className = 'text-sm'
+        right.textContent = formatVND((i.qty || 1) * (i.priceK || 0))
+        row.appendChild(left)
+        row.appendChild(right)
+        list.appendChild(row)
+      })
+      document.getElementById('order-total').textContent = items.length ? formatVND(total / 1000) : ''
+    }
+
+    function setStatus(s) {
+      const wait = document.getElementById('status-wait')
+      const ok = document.getElementById('status-success')
+      const fail = document.getElementById('status-fail')
+      const text = document.getElementById('status-text')
+      const titleEl = document.getElementById('fail-title')
+      const descEl = document.getElementById('fail-desc')
       wait.classList.add('hidden')
-      ok.classList.remove('hidden')
-      document.getElementById('status-card').classList.add('bg-green-50')
+      ok.classList.add('hidden')
+      fail.classList.add('hidden')
+      if (s === 'completed') {
+        ok.classList.remove('hidden')
+        document.getElementById('status-card').classList.add('bg-green-50')
+      } else if (s === 'failed' || s === 'canceled') {
+        fail.classList.remove('hidden')
+        document.getElementById('status-card').classList.add('bg-red-50')
+        if (titleEl) titleEl.textContent = s === 'failed' ? 'Xác minh chuyển khoản thất bại' : 'Đơn đã bị hủy'
+        if (descEl) descEl.textContent = s === 'failed' ? 'Ảnh biên lai chưa hợp lệ. Vui lòng mở chat hoặc liên hệ quầy.' : 'Vui lòng mở chat hoặc gọi quầy để được hỗ trợ.'
+      } else {
+        wait.classList.remove('hidden')
+        text.textContent = s === 'processing' ? 'Đang pha chế...' : (s === 'pending_transfer' ? 'Đang xác minh thanh toán...' : 'Đang chờ quầy xác nhận...')
+      }
     }
-    function simulateSuccess(){
-      setSuccess()
+
+    const statusCard = document.getElementById('status-card')
+    const orderBox = document.getElementById('order-box')
+
+    if (mode === 'search' && !orderId) {
+      statusCard.classList.add('hidden')
+      orderBox.classList.add('hidden')
+    } else if (orderId && typeof firebase !== 'undefined') {
+      orderBox.classList.remove('hidden')
+      statusCard.classList.remove('hidden')
+      const db = window.bbDb || firebase.firestore()
+      db.collection('orders').doc(orderId).onSnapshot(function (doc) {
+        if (!doc.exists) {
+          setStatus('canceled')
+          renderOrder({})
+          return
+        }
+        const data = doc.data()
+        renderOrder(data)
+        const status = data.status || 'unverified_cash'
+        setStatus(status)
+      }, function (err) {
+        setStatus('canceled')
+        document.getElementById('fail-title').textContent = 'Không tải được đơn hàng'
+        document.getElementById('fail-desc').textContent = 'Kiểm tra kết nối mạng hoặc mã đơn.'
+        renderOrder({})
+      })
+    } else if (!orderId) {
+      statusCard.classList.add('hidden')
+      orderBox.classList.add('hidden')
     }
-    window.simulateSuccess = simulateSuccess
-    setTimeout(simulateSuccess, 5000)
 
     const search = document.getElementById('search')
     const btnSearch = document.getElementById('btn-search')
-    btnSearch.addEventListener('click', () => {
+    function doSearch() {
       const v = search.value.trim()
-      if(v) location.href = `tracking.html?orderId=${encodeURIComponent(v)}`
-    })
-
-    const chatToggle = document.getElementById('chat-toggle')
-    const chatPanel = document.getElementById('chat-panel')
-    const chatClose = document.getElementById('chat-close')
-    const chatSend = document.getElementById('chat-send')
-    const chatInput = document.getElementById('chat-input')
-    const chatLog = document.getElementById('chat-log')
-    const chatUpload = document.getElementById('chat-upload')
-    function pushMsg(html){
-      const item = document.createElement('div')
-      item.className = 'max-w-[80%] ml-auto bg-accent text-white px-3 py-2 rounded-lg'
-      item.innerHTML = html
-      chatLog.appendChild(item)
-      chatLog.scrollTop = chatLog.scrollHeight
+      if (v) {
+        const qs = new URLSearchParams({ mode: 'search', orderId: v }).toString()
+        location.href = 'tracking.html?' + qs
+      }
     }
-    function pushReply(text){
-      const item = document.createElement('div')
-      item.className = 'max-w-[80%] mr-auto bg-white px-3 py-2 rounded-lg'
-      item.textContent = text
-      chatLog.appendChild(item)
-      chatLog.scrollTop = chatLog.scrollHeight
-    }
-    chatToggle.addEventListener('click', () => chatPanel.classList.toggle('hidden'))
-    chatClose.addEventListener('click', () => chatPanel.classList.add('hidden'))
-    chatSend.addEventListener('click', () => {
-      const text = chatInput.value.trim()
-      if(!text) return
-      pushMsg(text)
-      chatInput.value = ''
-      setTimeout(() => pushReply('Đã tiếp nhận. Vui lòng chờ quầy xác nhận.'), 400)
-    })
-    chatUpload.addEventListener('change', (e) => {
-      const f = e.target.files[0]
-      if(!f) return
-      const r = new FileReader()
-      r.onload = () => pushMsg(`<img src="${r.result}" class="max-h-32 rounded-md" />`)
-      r.readAsDataURL(f)
-      setTimeout(() => pushReply('Ảnh đã nhận. Đang kiểm tra.'), 600)
-    })
+    btnSearch.addEventListener('click', doSearch)
+    search.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch() })
   </script>
+  <script src="chat.js?v=20260301-1" defer></script>
 </body>
 </html>

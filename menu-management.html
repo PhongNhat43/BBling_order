@@ -53,51 +53,52 @@
     </div>
   </main>
 
+  <script src="menu-store.js" defer></script>
   <script>
-    const menu = [
-      { cat: 'Coffee', name: 'Black Coffee', priceK: 29, visible: true },
-      { cat: 'Coffee', name: 'White Coffee', priceK: 29, visible: true },
-      { cat: 'Coffee', name: 'Salted Almond Coffee', priceK: 39, visible: true },
-      { cat: 'Coffee', name: 'Coconut Coffee', priceK: 39, visible: true },
-      { cat: 'Trà hoa quả', name: 'Lotus Tea with Gold Jelly', priceK: 39, visible: true },
-      { cat: 'Trà hoa quả', name: 'Mango Cream Cheese Tea', priceK: 45, visible: true },
-      { cat: 'Sữa chua', name: 'Yogurt with Peach & Passionfruit', priceK: 49, visible: true },
-      { cat: 'Đồ ăn vặt', name: 'Sunflower Seeds', priceK: 20, visible: true },
-      { cat: 'Đồ ăn vặt', name: 'Dried Beef', priceK: 45, visible: true }
-    ]
+    let menuData = getMenuForAdmin();
+    let categories = menuData.categories;
+    let items = menuData.items;
+
     function vnd(k){ return (k*1000).toLocaleString('vi-VN') + ' đ' }
+    function catName(catId){ return categories.find(c=>c.id===catId)?.name || catId }
+
     function render(){
       const tb = document.getElementById('table-body')
-      tb.innerHTML = menu.map((m,i)=>`
+      tb.innerHTML = items.map((m,i)=>`
         <tr>
-          <td class="px-3 py-2">${m.cat}</td>
+          <td class="px-3 py-2">${catName(m.cat)}</td>
           <td class="px-3 py-2">${m.name}</td>
           <td class="px-3 py-2 text-right">${m.priceK}</td>
           <td class="px-3 py-2 text-right">${vnd(m.priceK)}</td>
           <td class="px-3 py-2 text-center">
-            <span class="inline-block px-2 py-1 rounded-lg text-xs ${m.visible?'bg-green-600':'bg-gray-600'}">${m.visible?'Hiện':'Ẩn'}</span>
+            <span class="inline-block px-2 py-1 rounded-lg text-xs ${m.visible!==false?'bg-green-600':'bg-gray-600'}">${m.visible!==false?'Hiện':'Ẩn'}</span>
           </td>
           <td class="px-3 py-2 text-right">
-            <button data-i="${i}" class="toggle px-3 py-1 rounded-lg border border-white/20 mr-2">${m.visible?'Ẩn':'Hiện'}</button>
+            <button data-i="${i}" class="toggle px-3 py-1 rounded-lg border border-white/20 mr-2">${m.visible!==false?'Ẩn':'Hiện'}</button>
             <button data-i="${i}" class="edit px-3 py-1 rounded-lg bg-primary text-cream">Sửa giá</button>
           </td>
         </tr>
       `).join('')
       tb.querySelectorAll('.toggle').forEach(b=>b.addEventListener('click',()=>{
-        const i = Number(b.dataset.i); menu[i].visible = !menu[i].visible; render()
+        const i = Number(b.dataset.i); items[i].visible = !items[i].visible; saveMenu(categories, items); render()
       }))
       tb.querySelectorAll('.edit').forEach(b=>b.addEventListener('click',()=>{
-        const i = Number(b.dataset.i); const cur = menu[i].priceK
+        const i = Number(b.dataset.i); const cur = items[i].priceK
         const nv = prompt('Nhập giá theo đơn vị k', String(cur))
         const num = Number(nv)
-        if(!isNaN(num) && num>0){ menu[i].priceK = Math.round(num); render() }
+        if(!isNaN(num) && num>0){ items[i].priceK = Math.round(num); saveMenu(categories, items); render() }
       }))
     }
+
     document.getElementById('add-item').addEventListener('click', ()=>{
       const name = prompt('Tên món mới'); if(!name) return
-      const cat = prompt('Danh mục', 'Khác') || 'Khác'
+      const catList = categories.map(c=>c.name).join(', ')
+      const catNameInput = prompt('Danh mục (chọn một trong: ' + catList + ')', categories[0]?.name || '')
+      const cat = categories.find(c=>c.name===catNameInput) || categories[0]
       const p = Number(prompt('Giá (k)', '30') || '30')
-      menu.push({ cat, name, priceK: isNaN(p)?30:Math.round(p), visible: true })
+      const newId = 'it-' + Date.now()
+      items.push({ id: newId, name, priceK: isNaN(p)?30:Math.round(p), desc: '', img: '', cat: cat?.id||'', visible: true })
+      saveMenu(categories, items)
       render()
     })
     render()

@@ -42,4 +42,3 @@
 2. Network tab: xác nhận QR/img trả 200; khi lỗi, có thông báo thân thiện.
 3. Kiểm tra event handlers: click vào item/“+” có mở Modal, log nhẹ khi cần.
 4. Trước khi push: xóa console.log tạm, rà soát try/catch chính.
-

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>B.BLING Coffee & Eatery</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -60,6 +64,7 @@
           <h1 class="text-3xl md:text-4xl font-bold font-serif italic tracking-wide">B.BLING</h1>
           <span class="text-sm uppercase tracking-[0.2em]">Coffee & Eatery</span>
           <span class="ml-3 text-xs px-3 py-1 rounded-full bg-accent text-white">0985.679.565</span>
+          <a href="tracking.html?mode=search" class="ml-3 text-xs px-3 py-1 rounded-full bg-white text-primary border border-primary/20 shadow-soft hover:shadow-lg active:scale-95 transition">Tra cứu đơn</a>
           <a href="admin-login.html" class="ml-3 text-xs px-3 py-1 rounded-full bg-primary text-cream shadow-soft hover:shadow-lg active:scale-95 transition">Hệ thống Quản trị</a>
         </div>
       </div>
@@ -69,7 +74,7 @@
       <section class="mx-auto max-w-2xl">
         <div class="mb-4 flex items-center justify-between">
           <h2 class="font-serif italic text-xl">Menu</h2>
-          <div class="text-xs text-primary/70">Vintage Minimalist</div>
+          <div class="text-xs text-primary/70">Vintage Minimalist • Live</div>
         </div>
 
         <div id="menu-root" class="space-y-8"></div>
@@ -187,7 +192,8 @@
 
   <footer class="px-4 pb-8 md:px-8"></footer>
 
-  <script src="app.js?v=20260301-1" defer></script>
+  <script src="menu-store.js" defer></script>
+  <script src="app.js?v=20260301-2" defer></script>
   <script src="chat.js?v=20260301-1" defer></script>
 </body>
 </html>

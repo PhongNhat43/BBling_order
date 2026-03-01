@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Thanh toán | B.BLING</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -30,41 +34,89 @@
   <div class="min-h-screen flex items-start justify-center p-4 pt-8">
     <div class="w-full max-w-md bg-white rounded-3xl shadow-soft p-5">
       <div class="text-center mb-4">
-        <div class="font-serif italic text-2xl mb-1">Quét mã để thanh toán</div>
+        <div class="font-sans text-xl font-semibold mb-1">Lựa chọn phương thức thanh toán</div>
         <div class="text-xs text-primary/70">B.BLING Coffee & Eatery</div>
-      </div>
-
-      <div class="flex items-center justify-center mb-4">
-        <img id="qr" alt="VietQR" class="w-64 h-64 rounded-xl border border-primary/10 object-contain" />
       </div>
 
       <div class="space-y-3 mb-4">
         <div class="flex items-center justify-between rounded-xl bg-cream px-3 py-2">
           <div class="text-sm"><span class="opacity-80">Mã đơn:</span> <span id="bill" class="font-semibold">#BILL102</span></div>
           <button id="copy-bill" class="p-2 rounded-lg active:scale-95" aria-label="Copy">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v8a2 2 0 002 2z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8h2a2 2 0 012 2v8a2 2 0 01-2 2H10a2 2 0 01-2-2v-2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8M8 11h8M8 15h5"/><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
           </button>
         </div>
         <div class="flex items-center justify-between rounded-xl bg-cream px-3 py-2">
           <div class="text-sm"><span class="opacity-80">Số tiền:</span> <span id="amount" class="font-semibold">78.000đ</span></div>
           <button id="copy-amount" class="p-2 rounded-lg active:scale-95" aria-label="Copy">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v8a2 2 0 002 2z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8h2a2 2 0 012 2v8a2 2 0 01-2 2H10a2 2 0 01-2-2v-2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8M8 11h8M8 15h5"/><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
           </button>
         </div>
       </div>
 
-      <p class="text-xs text-primary/70 mb-4 text-center">Mở ứng dụng Ngân hàng hoặc ví điện tử để quét mã Napas 24/7</p>
+      <div class="mb-4 grid grid-cols-1 gap-3">
+        <div>
+          <div class="text-sm mb-2 font-semibold">Thông tin khách hàng</div>
+          <div class="grid grid-cols-1 gap-2">
+            <input id="cust-name" class="rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Tên khách hàng *" />
+            <input id="cust-phone" class="rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Số điện thoại (10 số) *" />
+            <div>
+              <div class="text-xs mb-1 text-primary/80">Địa điểm (tùy chọn)</div>
+              <div class="grid grid-cols-1 gap-2">
+                <select id="loc-city" class="rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60">
+                  <option value="">Chọn Tỉnh/Thành phố</option>
+                </select>
+                <select id="loc-district" class="rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" disabled>
+                  <option value="">Chọn Quận/Huyện</option>
+                </select>
+                <select id="loc-ward" class="rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" disabled>
+                  <option value="">Chọn Phường/Xã</option>
+                </select>
+              </div>
+            </div>
+            <input id="cust-address" class="rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Địa chỉ giao hàng / Số bàn *" />
+            <div id="err-name" class="hidden text-xs text-red-600">Vui lòng nhập tên.</div>
+            <div id="err-phone" class="hidden text-xs text-red-600">Số điện thoại không hợp lệ (0xxxxxxxxx hoặc +84xxxxxxxxx).</div>
+            <div id="err-address" class="hidden text-xs text-red-600">Vui lòng nhập địa chỉ/số bàn (tối thiểu 5 ký tự).</div>
+          </div>
+        </div>
+        <div>
+          <div class="text-sm mb-2 font-semibold">Hình thức thanh toán</div>
+          <div class="flex items-center gap-2">
+            <button id="btn-cash" class="min-w-[120px] px-3 py-2 rounded-lg border border-primary/20 bg-white hover:shadow-lg">Tiền mặt</button>
+            <button id="btn-transfer" class="min-w-[120px] px-3 py-2 rounded-lg border border-primary/20 bg-white hover:shadow-lg">Chuyển khoản</button>
+          </div>
+          <div id="err-method" class="hidden text-xs text-red-600 mt-1">Vui lòng chọn phương thức thanh toán.</div>
+        </div>
+      </div>
 
-      <button id="confirm" class="w-full py-3 rounded-xl bg-primary text-white font-semibold tracking-wider active:scale-95">TÔI ĐÃ CHUYỂN KHOẢN</button>
+      <div id="section-transfer" class="hidden">
+        <div class="flex items-center justify-center mb-3">
+          <img id="qr" alt="VietQR" class="w-64 h-64 rounded-xl border border-primary/10 object-contain" />
+        </div>
+        <p class="text-xs text-primary/70 mb-3 text-center">Mở ứng dụng Ngân hàng/ ví điện tử để quét mã Napas 24/7</p>
+        <div class="flex items-center gap-2">
+          <label class="px-3 py-2 rounded-lg bg-primary text-cream text-sm cursor-pointer">Tải ảnh biên lai
+            <input id="receipt" type="file" accept="image/*" class="hidden" />
+          </label>
+          <div id="receipt-name" class="text-xs text-primary/70"></div>
+        </div>
+        <div class="mt-2">
+          <img id="receipt-preview" alt="" class="hidden max-h-40 rounded-lg border border-primary/10 object-contain" />
+        </div>
+        <div id="err-receipt" class="hidden text-xs text-red-600 mt-1">Cần tải ảnh biên lai để tiến hành đặt đơn hàng.</div>
+      </div>
+
+      <button id="submit-order" class="mt-4 w-full py-3 rounded-xl bg-primary text-white font-semibold tracking-wider">GỬI ĐƠN</button>
 
       <div class="mt-3 text-center text-xs">
         Cần hỗ trợ hoặc gửi ảnh biên lai?
-        <a href="index.html" class="text-accent underline underline-offset-4">Nhắn tin ngay</a>
+        <a id="goto-chat" href="index.html" class="text-accent underline underline-offset-4">Nhắn tin ngay</a>
+        · <button id="copy-hotline" class="underline underline-offset-4 text-primary/80" type="button">Hotline 0985.679.565</button>
       </div>
     </div>
   </div>
 
-  <div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-6 px-4 py-2 rounded-lg bg-success text-white text-sm shadow-soft hidden">Đã gửi tín hiệu tới quầy bar</div>
+  <div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-6 px-4 py-2 rounded-lg text-white text-sm shadow-soft hidden z-50"></div>
 
   <script>
     const params = new URLSearchParams(location.search)
@@ -78,21 +130,215 @@
 
     const qrData = encodeURIComponent(`B.BLING|${bill}|${amount}|${content}`)
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${qrData}`
-    document.getElementById('qr').src = qrUrl
+    const qrImg = document.getElementById('qr')
+    if (qrImg) qrImg.src = qrUrl
 
-    function copyText(t){ navigator.clipboard.writeText(t) }
+    const copyToast = document.createElement('div')
+    copyToast.className = 'fixed left-1/2 -translate-x-1/2 bottom-6 px-3 py-2 rounded-lg bg-success text-white text-xs shadow-soft hidden'
+    copyToast.textContent = 'Đã sao chép'
+    document.body.appendChild(copyToast)
+    function showCopyToast(){
+      copyToast.classList.remove('hidden')
+      setTimeout(()=>copyToast.classList.add('hidden'), 1200)
+    }
+    function copyText(t){ navigator.clipboard.writeText(t).then(showCopyToast) }
     document.getElementById('copy-bill').addEventListener('click', () => copyText(bill))
     document.getElementById('copy-amount').addEventListener('click', () => copyText(String(amount)))
 
-    const toast = document.getElementById('toast')
-    document.getElementById('confirm').addEventListener('click', () => {
-      toast.classList.remove('hidden')
-      setTimeout(() => { toast.classList.add('hidden') }, 1400)
-      setTimeout(() => {
-        const q = new URLSearchParams({ orderId: bill }).toString()
-        location.href = `tracking.html?${q}`
-      }, 2000)
+    let method = null
+    const btnCash = document.getElementById('btn-cash')
+    const btnTransfer = document.getElementById('btn-transfer')
+    const sectionTransfer = document.getElementById('section-transfer')
+    const submitBtn = document.getElementById('submit-order')
+    const nameEl = document.getElementById('cust-name')
+    const phoneEl = document.getElementById('cust-phone')
+    const addrEl = document.getElementById('cust-address')
+    const receiptInput = document.getElementById('receipt')
+    const receiptName = document.getElementById('receipt-name')
+    const receiptPreview = document.getElementById('receipt-preview')
+    const errName = document.getElementById('err-name')
+    const errPhone = document.getElementById('err-phone')
+    const errAddr = document.getElementById('err-address')
+    const errMethod = document.getElementById('err-method')
+    const errReceipt = document.getElementById('err-receipt')
+    // location selects (cập nhật theo yêu cầu: Bắc Ninh & Hà Nội)
+    const selCity = document.getElementById('loc-city')
+    const selDistrict = document.getElementById('loc-district')
+    const selWard = document.getElementById('loc-ward')
+    const locations = {
+      'Bắc Ninh': {
+        'Từ Sơn': ['Phường Đông Ngàn','Phường Đồng Kỵ','Phường Trang Hạ'],
+        'Tiên Du': ['Xã Tương Giang','Xã Hoàn Sơn','Xã Phật Tích'],
+        'Yên Phong': ['Xã Đông Tiến','Xã Yên Trung','Xã Long Châu']
+      },
+      'Hà Nội': {
+        'Đông Anh': ['Xã Uy Nỗ','Xã Hải Bối','Xã Vân Nội'],
+        'Gia Lâm': ['Xã Đặng Xá','Xã Dương Xá','Xã Kiêu Kỵ']
+      }
+    }
+    // populate city
+    Object.keys(locations).forEach(c=>{
+      const o=document.createElement('option'); o.value=c; o.textContent=c; selCity.appendChild(o);
     })
+    selCity.addEventListener('change', ()=>{
+      selDistrict.innerHTML = '<option value=\"\">Chọn Quận/Huyện</option>'
+      selWard.innerHTML = '<option value=\"\">Chọn Phường/Xã</option>'
+      selWard.disabled = true
+      const c = selCity.value
+      if(!c){ selDistrict.disabled=true; return }
+      selDistrict.disabled=false
+      Object.keys(locations[c]).forEach(d=>{
+        const o=document.createElement('option'); o.value=d; o.textContent=d; selDistrict.appendChild(o);
+      })
+    })
+    selDistrict.addEventListener('change', ()=>{
+      selWard.innerHTML = '<option value=\"\">Chọn Phường/Xã</option>'
+      const c = selCity.value, d = selDistrict.value
+      if(!c || !d){ selWard.disabled=true; return }
+      selWard.disabled=false
+      locations[c][d].forEach(w=>{
+        const o=document.createElement('option'); o.value=w; o.textContent=w; selWard.appendChild(o);
+      })
+    })
+
+    function isValidPhone(s){
+      const v = (s||'').trim()
+      return /^(0\d{9}|\+?84\d{9})$/.test(v)
+    }
+    function validateAndShow(){
+      const nameOk = nameEl.value.trim().length > 0
+      const phoneOk = isValidPhone(phoneEl.value)
+      const methodOk = method === 'cash' || method === 'transfer'
+      const receiptOk = method !== 'transfer' || !!(receiptInput.files && receiptInput.files[0])
+      const addrVal = addrEl.value.trim()
+      const addrWarn = (addrVal.length === 0) || (addrVal.length > 0 && addrVal.length < 5)
+      // show/hide
+      errName.classList.toggle('hidden', nameOk)
+      errPhone.classList.toggle('hidden', phoneOk)
+      errMethod.classList.toggle('hidden', methodOk)
+      errAddr.classList.toggle('hidden', !addrWarn)
+      errReceipt.classList.toggle('hidden', receiptOk)
+      return nameOk && phoneOk && methodOk && receiptOk && !addrWarn
+    }
+    ;[nameEl, phoneEl, addrEl].forEach(el => el.addEventListener('input', validateAndShow))
+
+    btnCash.addEventListener('click', () => {
+      method = 'cash'
+      sectionTransfer.classList.add('hidden')
+      btnCash.classList.add('bg-success','text-white','border-success')
+      btnCash.classList.remove('bg-white','text-primary')
+      btnTransfer.classList.remove('bg-success','text-white','border-success')
+      btnTransfer.classList.add('bg-white','text-primary','border-primary/20')
+      validateAndShow()
+    })
+    btnTransfer.addEventListener('click', () => {
+      method = 'transfer'
+      sectionTransfer.classList.remove('hidden')
+      btnTransfer.classList.add('bg-success','text-white','border-success')
+      btnTransfer.classList.remove('bg-white','text-primary')
+      btnCash.classList.remove('bg-success','text-white','border-success')
+      btnCash.classList.add('bg-white','text-primary','border-primary/20')
+      validateAndShow()
+    })
+    receiptInput.addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0]
+      if(!f){ receiptName.textContent=''; receiptPreview.classList.add('hidden'); validateAndShow(); return }
+      receiptName.textContent = f.name
+      const reader = new FileReader()
+      reader.onload = () => {
+        receiptPreview.src = reader.result
+        receiptPreview.classList.remove('hidden')
+        validateAndShow()
+      }
+      reader.readAsDataURL(f)
+    })
+
+    function showToast(msg, isError) {
+      const t = document.getElementById('toast')
+      t.textContent = msg
+      t.className = 'fixed left-1/2 -translate-x-1/2 bottom-6 px-4 py-2 rounded-lg text-white text-sm shadow-soft z-50 ' + (isError ? 'bg-red-600' : 'bg-success')
+      t.classList.remove('hidden')
+      setTimeout(() => t.classList.add('hidden'), 3000)
+    }
+
+    submitBtn.addEventListener('click', async () => {
+      const ok = validateAndShow()
+      if (!ok) return
+      const customer = {
+        name: nameEl.value.trim(),
+        phone: phoneEl.value.trim(),
+        address: addrEl.value.trim(),
+        city: selCity.value || '',
+        district: selDistrict.value || '',
+        ward: selWard.value || ''
+      }
+      const status = method === 'cash' ? 'unverified_cash' : 'pending_transfer'
+      let saved = null
+      try { saved = JSON.parse(sessionStorage.getItem('order_' + bill) || 'null') } catch(e){}
+      if (!saved || !saved.items || !saved.items.length) {
+        showToast('Không tìm thấy giỏ hàng. Vui lòng đặt món lại từ trang chủ.', true)
+        return
+      }
+      let billUrl = ''
+      if (method === 'transfer' && receiptInput.files && receiptInput.files[0]) {
+        try {
+          submitBtn.disabled = true
+          submitBtn.textContent = 'Đang tải ảnh...'
+          const ref = window.bbStorage.ref().child('bills/' + bill + '_' + Date.now())
+          await ref.put(receiptInput.files[0])
+          billUrl = await ref.getDownloadURL()
+        } catch (err) {
+          submitBtn.disabled = false
+          submitBtn.textContent = 'GỬI ĐƠN'
+          showToast('Tải ảnh biên lai thất bại. Kiểm tra kết nối mạng.', true)
+          return
+        }
+      }
+      const orderData = {
+        customer,
+        items: saved.items,
+        note: saved.note || '',
+        totalK: saved.totalK || amount / 1000,
+        totalVND: amount,
+        method,
+        status,
+        billUrl: billUrl || null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }
+      try {
+        submitBtn.textContent = 'Đang gửi...'
+        await window.bbDb.collection('orders').doc(bill).set(orderData)
+        const q = new URLSearchParams({ orderId: bill }).toString()
+        location.href = 'tracking.html?' + q
+      } catch (err) {
+        submitBtn.disabled = false
+        submitBtn.textContent = 'GỬI ĐƠN'
+        showToast('Gửi đơn thất bại. Kiểm tra kết nối mạng.', true)
+      }
+    })
+
+    // goto chat: set flag to auto open on index
+    document.getElementById('goto-chat').addEventListener('click', (e) => {
+      e.preventDefault()
+      // Hiển thị box chat ngay trên trang thanh toán (nhờ chat.js tự dựng UI)
+      if (!document.getElementById('chat-toggle')) {
+        const s = document.createElement('script')
+        s.src = 'chat.js?v=20260301-1'
+        s.defer = true
+        document.body.appendChild(s)
+        s.onload = () => {
+          setTimeout(()=>{
+            const t = document.getElementById('chat-toggle')
+            if (t) t.click()
+          }, 50)
+        }
+      } else {
+        document.getElementById('chat-toggle').click()
+      }
+    })
+    document.getElementById('copy-hotline').addEventListener('click', () => copyText('0985679565'))
   </script>
+  <!-- Nạp chat.js để có thể mở box chat ngay tại trang này -->
+  <script src="chat.js?v=20260301-1" defer></script>
 </body>
 </html>

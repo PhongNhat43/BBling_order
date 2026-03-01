@@ -1,0 +1,67 @@
+TEST REPORT — Payment Screen (B.BLING)
+
+TC01 — Hiển thị mã đơn & số tiền
+Input: URL có bill=BILL123456, amount=150000
+Expected Action: Trang load payment.html, parse URL
+Expected Result: Mã đơn hiển thị #BILL123456; Số tiền hiển thị 150.000đ; QR tương ứng
+
+TC02 — Copy mã đơn
+Input: Click nút copy bên cạnh mã đơn
+Expected Action: Sao chép BILL123456 vào clipboard
+Expected Result: Xuất hiện toast “Đã sao chép”
+
+TC03 — Copy số tiền
+Input: Click nút copy bên cạnh số tiền
+Expected Action: Sao chép “150000” vào clipboard
+Expected Result: Xuất hiện toast “Đã sao chép”
+
+TC04 — Chọn phương thức: Tiền mặt
+Input: Click “Tiền mặt”
+Expected Action: Nút “Tiền mặt” bật style chọn; “Chuyển khoản” về style không chọn
+Expected Result: Text nút vẫn giữ nguyên; section VietQR/biên lai ẩn
+
+TC05 — Chọn phương thức: Chuyển khoản
+Input: Click “Chuyển khoản”
+Expected Action: Bật style chọn; hiện khối QR + upload biên lai
+Expected Result: Text nút vẫn giữ nguyên; QR hiển thị; receipt-name trống
+
+TC06 — Validate tên trống
+Input: Để trống Tên, bấm “GỬI ĐƠN”
+Expected Action: Hiện err-name màu đỏ
+Expected Result: Không điều hướng; err-name hiển thị
+
+TC07 — Validate SĐT sai định dạng
+Input: SĐT = “01234”, bấm “GỬI ĐƠN”
+Expected Action: Hiện err-phone màu đỏ
+Expected Result: Không điều hướng; err-phone hiển thị
+
+TC08 — Validate địa chỉ trống/quá ngắn
+Input: Địa chỉ = “” (hoặc “AB”), bấm “GỬI ĐƠN”
+Expected Action: Hiện err-address
+Expected Result: Không điều hướng; err-address hiển thị
+
+TC09 — Validate phương thức chưa chọn
+Input: Không chọn Cash/Transfer, bấm “GỬI ĐƠN”
+Expected Action: Hiện err-method
+Expected Result: Không điều hướng; err-method hiển thị
+
+TC10 — Validate biên lai bắt buộc khi chuyển khoản
+Input: Chọn “Chuyển khoản”, chưa upload ảnh, bấm “GỬI ĐƠN”
+Expected Action: Hiện err-receipt
+Expected Result: Không điều hướng; err-receipt hiển thị
+
+TC11 — Thành công (Tiền mặt)
+Input: Tên hợp lệ, SĐT hợp lệ, Địa chỉ ≥5 ký tự, chọn “Tiền mặt”
+Expected Action: Lưu sessionStorage order_{bill} với {method:'cash', status:'unverified_cash'}
+Expected Result: Điều hướng tracking.html?orderId=bill
+
+TC12 — Địa điểm: Thành phố → Quận/Huyện → Phường/Xã
+Input: City = “Bắc Ninh”; District = “Từ Sơn”
+Expected Action: Ward enable và có danh sách phường/xã
+Expected Result: Danh sách ward hiển thị “Phường Đông Ngàn/Đồng Kỵ/Trang Hạ”
+
+TC13 — Mở chat tại chỗ
+Input: Click “Nhắn tin ngay”
+Expected Action: Nạp chat.js (nếu chưa) và mở box chat trên payment.html
+Expected Result: Chat panel hiển thị; có thẻ hỗ trợ và nút copy hotline
+
