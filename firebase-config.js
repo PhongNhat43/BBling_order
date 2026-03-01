@@ -15,5 +15,24 @@
     window.bbApp = firebase.apps.length ? firebase.app() : firebase.initializeApp(firebaseConfig);
     window.bbDb = firebase.firestore();
     window.bbStorage = firebase.storage();
+    
+    // Debug logging
+    console.log('🔥 Firebase initialized:', {
+      projectId: firebaseConfig.projectId,
+      hasApp: !!window.bbApp,
+      hasDb: !!window.bbDb,
+      hasStorage: !!window.bbStorage
+    });
+    
+    // Test connection immediately
+    if (window.bbDb) {
+      window.bbDb.enableNetwork().then(() => {
+        console.log('✅ Firestore network enabled');
+      }).catch(err => {
+        console.error('❌ Firestore network error:', err);
+      });
+    }
+  } else {
+    console.error('❌ Firebase SDK not loaded');
   }
 })();

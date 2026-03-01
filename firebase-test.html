@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Firebase Test | B.BLING</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: '#3E2723', cream: '#F2E8DF', accent: '#C2410C', success: '#16A34A' },
+          fontFamily: { serif: ['Playfair Display','serif'], sans: ['Montserrat','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    .shadow-soft{ box-shadow: 0 6px 20px rgba(62,39,35,.12); }
+  </style>
+</head>
+<body class="min-h-screen bg-cream text-primary font-sans p-4">
+  <div class="max-w-4xl mx-auto">
+    <div class="text-center mb-6">
+      <div class="font-serif italic text-3xl mb-2">B.BLING</div>
+      <div class="text-sm uppercase tracking-[0.2em] text-primary/70">Firebase Connection Test</div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Connection Status -->
+      <div class="bg-white rounded-2xl shadow-soft p-4">
+        <h3 class="font-semibold mb-3">🔗 Trạng thái kết nối</h3>
+        <div id="connection-status" class="space-y-2 text-sm">
+          <div>Firebase App: <span id="app-status" class="font-mono">Checking...</span></div>
+          <div>Firestore: <span id="firestore-status" class="font-mono">Checking...</span></div>
+          <div>Storage: <span id="storage-status" class="font-mono">Checking...</span></div>
+          <div>Project ID: <span id="project-id" class="font-mono">-</span></div>
+        </div>
+      </div>
+
+      <!-- Test Actions -->
+      <div class="bg-white rounded-2xl shadow-soft p-4">
+        <h3 class="font-semibold mb-3">🧪 Test Actions</h3>
+        <div class="space-y-2">
+          <button id="test-write" class="w-full px-4 py-2 rounded-lg bg-primary text-white hover:opacity-90">Test Write to Firestore</button>
+          <button id="test-read" class="w-full px-4 py-2 rounded-lg bg-accent text-white hover:opacity-90">Test Read from Firestore</button>
+          <button id="create-sample-order" class="w-full px-4 py-2 rounded-lg bg-success text-white hover:opacity-90">Tạo đơn hàng mẫu</button>
+          <button id="create-sample-menu" class="w-full px-4 py-2 rounded-lg bg-blue-600 text-white hover:opacity-90">Tạo menu mẫu</button>
+          <button id="clear-data" class="w-full px-4 py-2 rounded-lg bg-red-600 text-white hover:opacity-90">Xóa dữ liệu test</button>
+        </div>
+      </div>
+
+      <!-- Console Log -->
+      <div class="md:col-span-2 bg-gray-900 rounded-2xl shadow-soft p-4">
+        <h3 class="font-semibold mb-3 text-white">📋 Console Log</h3>
+        <div id="console-log" class="bg-black rounded-lg p-3 h-64 overflow-y-auto font-mono text-xs text-green-400"></div>
+        <button id="clear-log" class="mt-2 px-3 py-1 rounded-lg bg-gray-700 text-white text-sm">Clear Log</button>
+      </div>
+
+      <!-- Data Preview -->
+      <div class="md:col-span-2 bg-white rounded-2xl shadow-soft p-4">
+        <h3 class="font-semibold mb-3">📊 Dữ liệu hiện tại</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 class="font-medium mb-2">Orders Collection:</h4>
+            <div id="orders-preview" class="bg-gray-50 rounded-lg p-3 text-xs font-mono max-h-40 overflow-y-auto"></div>
+          </div>
+          <div>
+            <h4 class="font-medium mb-2">Menu Collection:</h4>
+            <div id="menu-preview" class="bg-gray-50 rounded-lg p-3 text-xs font-mono max-h-40 overflow-y-auto"></div>
+          </div>
+        </div>
+        <button id="refresh-data" class="mt-3 px-4 py-2 rounded-lg bg-primary text-white">Refresh Data</button>
+      </div>
+    </div>
+
+    <div class="text-center mt-6">
+      <a href="index.html" class="text-accent underline underline-offset-4">← Quay lại trang chủ</a>
+    </div>
+  </div>
+
+  <script>
+    // Console logging to UI
+    const consoleLog = document.getElementById('console-log');
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const color = type === 'error' ? 'text-red-400' : type === 'success' ? 'text-green-400' : 'text-blue-400';
+      consoleLog.innerHTML += `<div class="${color}">[${timestamp}] ${message}</div>`;
+      consoleLog.scrollTop = consoleLog.scrollHeight;
+      console.log(`[Firebase Test] ${message}`);
+    }
+
+    // Check Firebase connection
+    function checkConnection() {
+      try {
+        // Check Firebase App
+        if (typeof firebase !== 'undefined' && window.bbApp) {
+          document.getElementById('app-status').textContent = '✅ Connected';
+          document.getElementById('app-status').className = 'font-mono text-success';
+          document.getElementById('project-id').textContent = window.bbApp.options.projectId;
+          log('Firebase App initialized successfully', 'success');
+        } else {
+          document.getElementById('app-status').textContent = '❌ Failed';
+          document.getElementById('app-status').className = 'font-mono text-red-600';
+          log('Firebase App not initialized', 'error');
+        }
+
+        // Check Firestore
+        if (window.bbDb) {
+          document.getElementById('firestore-status').textContent = '✅ Connected';
+          document.getElementById('firestore-status').className = 'font-mono text-success';
+          log('Firestore connected successfully', 'success');
+        } else {
+          document.getElementById('firestore-status').textContent = '❌ Failed';
+          document.getElementById('firestore-status').className = 'font-mono text-red-600';
+          log('Firestore not connected', 'error');
+        }
+
+        // Check Storage
+        if (window.bbStorage) {
+          document.getElementById('storage-status').textContent = '✅ Connected';
+          document.getElementById('storage-status').className = 'font-mono text-success';
+          log('Storage connected successfully', 'success');
+        } else {
+          document.getElementById('storage-status').textContent = '❌ Failed';
+          document.getElementById('storage-status').className = 'font-mono text-red-600';
+          log('Storage not connected', 'error');
+        }
+      } catch (error) {
+        log(`Connection check error: ${error.message}`, 'error');
+      }
+    }
+
+    // Test write to Firestore
+    async function testWrite() {
+      if (!window.bbDb) {
+        log('Firestore not available', 'error');
+        return;
+      }
+
+      try {
+        log('Testing write to Firestore...');
+        const testData = {
+          message: 'Hello from B.BLING test',
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          testId: Date.now()
+        };
+
+        await window.bbDb.collection('test').doc('connection-test').set(testData);
+        log('✅ Write test successful', 'success');
+      } catch (error) {
+        log(`❌ Write test failed: ${error.message}`, 'error');
+      }
+    }
+
+    // Test read from Firestore
+    async function testRead() {
+      if (!window.bbDb) {
+        log('Firestore not available', 'error');
+        return;
+      }
+
+      try {
+        log('Testing read from Firestore...');
+        const doc = await window.bbDb.collection('test').doc('connection-test').get();
+        
+        if (doc.exists) {
+          log(`✅ Read test successful: ${JSON.stringify(doc.data())}`, 'success');
+        } else {
+          log('❌ Read test failed: Document does not exist', 'error');
+        }
+      } catch (error) {
+        log(`❌ Read test failed: ${error.message}`, 'error');
+      }
+    }
+
+    // Create sample order
+    async function createSampleOrder() {
+      if (!window.bbDb) {
+        log('Firestore not available', 'error');
+        return;
+      }
+
+      try {
+        log('Creating sample order...');
+        const orderId = 'BILL' + Date.now().toString().slice(-6);
+        const orderData = {
+          customer: {
+            name: 'Nguyễn Văn Test',
+            phone: '0987654321',
+            address: 'Số 1 Đường Test, Phường Test'
+          },
+          items: [
+            {
+              id: 'coffee-black',
+              name: 'Black Coffee',
+              priceK: 29,
+              qty: 2,
+              img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80'
+            }
+          ],
+          totalK: 58,
+          totalVND: 58000,
+          method: 'cash',
+          status: 'unverified_cash',
+          note: 'Đơn hàng test từ Firebase Test',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await window.bbDb.collection('orders').doc(orderId).set(orderData);
+        log(`✅ Sample order created: ${orderId}`, 'success');
+        refreshData();
+      } catch (error) {
+        log(`❌ Failed to create sample order: ${error.message}`, 'error');
+      }
+    }
+
+    // Create sample menu
+    async function createSampleMenu() {
+      if (!window.bbDb) {
+        log('Firestore not available', 'error');
+        return;
+      }
+
+      try {
+        log('Creating sample menu...');
+        const menuData = {
+          categories: [
+            { id: 'cat-coffee', name: 'Coffee' },
+            { id: 'cat-tea', name: 'Trà hoa quả' }
+          ],
+          items: [
+            {
+              id: 'coffee-black',
+              name: 'Black Coffee',
+              priceK: 29,
+              desc: 'Hương vị cổ điển, đậm đà.',
+              img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80',
+              cat: 'cat-coffee',
+              visible: true
+            },
+            {
+              id: 'tea-lotus',
+              name: 'Lotus Tea',
+              priceK: 39,
+              desc: 'Trà sen thanh mát.',
+              img: 'https://images.unsplash.com/photo-1504544750208-dc0358e63f7f?auto=format&fit=crop&w=600&q=80',
+              cat: 'cat-tea',
+              visible: true
+            }
+          ]
+        };
+
+        await window.bbDb.collection('menu').doc('data').set(menuData);
+        log('✅ Sample menu created', 'success');
+        refreshData();
+      } catch (error) {
+        log(`❌ Failed to create sample menu: ${error.message}`, 'error');
+      }
+    }
+
+    // Clear test data
+    async function clearData() {
+      if (!window.bbDb) {
+        log('Firestore not available', 'error');
+        return;
+      }
+
+      try {
+        log('Clearing test data...');
+        
+        // Delete test document
+        await window.bbDb.collection('test').doc('connection-test').delete();
+        
+        // Delete sample orders (only test orders)
+        const ordersSnapshot = await window.bbDb.collection('orders').where('note', '==', 'Đơn hàng test từ Firebase Test').get();
+        const batch = window.bbDb.batch();
+        ordersSnapshot.docs.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+        
+        log('✅ Test data cleared', 'success');
+        refreshData();
+      } catch (error) {
+        log(`❌ Failed to clear data: ${error.message}`, 'error');
+      }
+    }
+
+    // Refresh data preview
+    async function refreshData() {
+      if (!window.bbDb) return;
+
+      try {
+        // Get orders
+        const ordersSnapshot = await window.bbDb.collection('orders').limit(5).get();
+        const ordersPreview = document.getElementById('orders-preview');
+        if (ordersSnapshot.empty) {
+          ordersPreview.textContent = 'No orders found';
+        } else {
+          const orders = ordersSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt ? 'ServerTimestamp' : null
+          }));
+          ordersPreview.textContent = JSON.stringify(orders, null, 2);
+        }
+
+        // Get menu
+        const menuDoc = await window.bbDb.collection('menu').doc('data').get();
+        const menuPreview = document.getElementById('menu-preview');
+        if (menuDoc.exists) {
+          menuPreview.textContent = JSON.stringify(menuDoc.data(), null, 2);
+        } else {
+          menuPreview.textContent = 'No menu data found';
+        }
+
+        log('Data refreshed', 'success');
+      } catch (error) {
+        log(`Failed to refresh data: ${error.message}`, 'error');
+      }
+    }
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      checkConnection();
+      refreshData();
+
+      document.getElementById('test-write').addEventListener('click', testWrite);
+      document.getElementById('test-read').addEventListener('click', testRead);
+      document.getElementById('create-sample-order').addEventListener('click', createSampleOrder);
+      document.getElementById('create-sample-menu').addEventListener('click', createSampleMenu);
+      document.getElementById('clear-data').addEventListener('click', clearData);
+      document.getElementById('refresh-data').addEventListener('click', refreshData);
+      document.getElementById('clear-log').addEventListener('click', () => {
+        consoleLog.innerHTML = '';
+      });
+    });
+  </script>
+</body>
+</html>
