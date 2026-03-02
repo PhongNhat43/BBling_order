@@ -110,44 +110,136 @@ const AdminState = (() => {
         right.appendChild(methodBadge); right.appendChild(st);
         top.appendChild(left); top.appendChild(right);
         card.appendChild(top);
-        card.addEventListener('click', ()=>{ selectedId=o.id; renderDetail(); showTab('chat'); });
+        card.addEventListener('click', ()=>{ selectedId=o.id; showDetailModal(); });
         root.appendChild(card);
       });
   }
-  function renderDetail(){
+  function showDetailModal(){
     const o = orders.find(x=>x.id===selectedId);
-    const title = qs('#detail-title'), body = qs('#detail-items'), chat = qs('#chat-log');
-    const orderInfo = qs('#chat-order-info'), emptyHint = qs('#chat-empty');
-    const custEl = qs('#detail-customer'), totalEl = qs('#detail-total');
-    if(!o){
-      if(orderInfo) orderInfo.classList.add('hidden');
-      if(emptyHint) emptyHint.classList.remove('hidden');
-      if(title) title.textContent='Chọn đơn để xem chi tiết';
-      if(body) body.innerHTML='';
-      if(chat) chat.innerHTML='';
-      const billImg=qs('#bill-preview'); if(billImg) billImg.classList.add('hidden');
-      return;
+    const modal = qs('#order-detail-modal');
+    
+    if(!o) { console.warn('Order not found for id:', selectedId); return; }
+    if(!modal) { console.error('Modal element not found'); return; }
+
+    // Ensure modal is visible first
+    modal.style.display = 'flex';
+    modal.style.zIndex = '9999';
+    modal.classList.remove('hidden');
+
+    // Header: Bill, Status, Method
+    const billEl = qs('#modal-detail-bill');
+    if(billEl) billEl.textContent = 'Đơn #' + o.id;
+
+    const methodBadge = qs('#modal-detail-method-badge');
+    if(methodBadge) {
+      methodBadge.textContent = o.method === 'cash' ? 'TM' : 'CK';
+      methodBadge.className = 'px-2 py-1 rounded text-[10px] ' + (o.method === 'cash' ? 'bg-amber-500/30 text-amber-200' : 'bg-yellow-500/30 text-yellow-200');
     }
-    if(orderInfo) orderInfo.classList.remove('hidden');
-    if(emptyHint) emptyHint.classList.add('hidden');
-    if(title) title.textContent = 'Đơn #'+o.id + ' · ' + (o.method==='transfer'?'Chuyển khoản':'Tiền mặt') + ' · ' + statusMap[o.status].label;
+
+    const statusBadge = qs('#modal-detail-status-badge');
+    if(statusBadge) {
+      statusBadge.textContent = statusMap[o.status].label;
+      statusBadge.className = 'px-2 py-1 rounded text-xs ' + statusMap[o.status].color;
+    }
+
+    // Time
+    const timeEl = qs('#modal-detail-time');
+    if(timeEl) {
+      const time = new Date(o.createdAt).toLocaleString('vi-VN');
+      timeEl.textContent = '📅 ' + time;
+    }
+
+    // Customer Info
+    const custEl = qs('#modal-detail-customer');
     if(custEl){
       const c = o.customer || {};
-      const parts = [c.name||'', c.phone||'', c.address||''].filter(Boolean);
-      const loc = [c.city, c.district, c.ward].filter(Boolean).join(' · ');
-      if(loc) parts.push(loc);
-      custEl.textContent = parts.join(' · ') || 'Chưa có thông tin';
+      const info = (c.name || 'Chưa có') + ' · ' + (c.phone || '---');
+      custEl.textContent = info;
     }
-    if(totalEl) totalEl.textContent = vndK(totalK(o));
-    if(body){
-      body.innerHTML = o.items.map(i=>`
-        <div class="flex items-center justify-between rounded-lg bg-gray-800 px-3 py-2 border border-white/10 text-sm">
-          <div><span class="font-medium">${i.name}</span> <span class="text-gray-500">x${i.qty} · ${vndK(i.priceK)}</span></div>
-          <div>${vndK(i.qty*i.priceK)}</div>
+
+    // Address
+    const addrEl = qs('#modal-detail-address');
+    if(addrEl){
+      const c = o.customer || {};
+      const parts = [c.address || '', [c.city, c.district, c.ward].filter(Boolean).join(', ')].filter(Boolean);
+      addrEl.textContent = parts.join(' | ') || 'Chưa có địa chỉ';
+    }
+
+    // Items
+    const itemsEl = qs('#modal-detail-items');
+    if(itemsEl){
+      itemsEl.innerHTML = o.items.map(i=>`
+        <div class="flex items-center gap-3 rounded-lg bg-gray-800 px-3 py-2 border border-white/10 text-sm">
+          ${i.img ? `<img src="${i.img}" alt="${i.name}" class="w-12 h-12 rounded object-cover flex-shrink-0 bg-gray-700" />` : '<div class="w-12 h-12 rounded bg-gray-700"></div>'}
+          <div class="flex-1">
+            <div><span class="font-medium">${i.name}</span> <span class="text-gray-500">x${i.qty} · ${vndK(i.priceK)}</span></div>
+            <div class="text-gray-400 text-xs">Thành tiền: ${vndK(i.qty*i.priceK)}</div>
+          </div>
         </div>
       `).join('');
-      if(o.note) body.innerHTML += '<div class="text-xs text-gray-500 mt-1">Ghi chú: '+o.note+'</div>';
     }
+
+    // Total
+    const totalEl = qs('#modal-detail-total');
+    if(totalEl) totalEl.textContent = vndK(totalK(o));
+
+    // Bill Preview (only for transfer)
+    const billSection = qs('#modal-detail-bill-section');
+    const billPreview = qs('#modal-detail-bill-preview');
+    if(billSection && billPreview){
+      if(o.method === 'transfer' && o.billUrl){
+        billSection.classList.remove('hidden');
+        billPreview.src = o.billUrl;
+        billPreview.onclick = () => window.open(o.billUrl, '_blank');
+      } else {
+        billSection.classList.add('hidden');
+      }
+    }
+
+    // Notes
+    const noteSection = qs('#modal-detail-note-section');
+    const noteEl = qs('#modal-detail-note');
+    if(noteSection && noteEl){
+      if(o.note && o.note.trim()){
+        noteSection.classList.remove('hidden');
+        noteEl.textContent = o.note;
+      } else {
+        noteSection.classList.add('hidden');
+      }
+    }
+
+    // Update action button states
+    const canApprove = o.status==='unverified_cash' || o.status==='pending_transfer';
+    const canComplete = o.status==='processing';
+    const ap=qs('#modal-btn-approve'), dn=qs('#modal-btn-done');
+    if(ap){ 
+      ap.disabled=!canApprove; 
+      if(!canApprove){ ap.classList.add('opacity-50', 'cursor-not-allowed'); }
+      else{ ap.classList.remove('opacity-50', 'cursor-not-allowed'); }
+    }
+    if(dn){ 
+      dn.disabled=!canComplete; 
+      if(!canComplete){ dn.classList.add('opacity-50', 'cursor-not-allowed'); }
+      else{ dn.classList.remove('opacity-50', 'cursor-not-allowed'); }
+    }
+  }
+
+  function renderDetail(){
+    const o = orders.find(x=>x.id===selectedId);
+    const chat = qs('#chat-log'), inputSec = qs('#chat-input-section'), emptyState = qs('#chat-empty-state');
+    
+    if(!o){
+      if(inputSec) inputSec.classList.add('hidden');
+      if(emptyState) emptyState.classList.remove('hidden');
+      if(chat) chat.classList.add('hidden');
+      return;
+    }
+
+    if(inputSec) inputSec.classList.remove('hidden');
+    if(emptyState) emptyState.classList.add('hidden');
+    if(chat) chat.classList.remove('hidden');
+
+    // Render chat messages
     if (chat) {
       chat.innerHTML = '';
       if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
@@ -186,39 +278,25 @@ const AdminState = (() => {
         chat.scrollTop = chat.scrollHeight;
       }
     }
-    const billImg = qs('#bill-preview');
-    if (billImg) {
-      if (o.billUrl) { billImg.src = o.billUrl; billImg.classList.remove('hidden'); }
-      else {
-        const bill = (o.chat||[]).filter(function(m){ return m.type==='image' && m.from!=='admin'; }).slice(-1)[0];
-        if (bill) { billImg.src = bill.content; billImg.classList.remove('hidden'); }
-        else billImg.classList.add('hidden');
-      }
-    }
-    const canApprove = o.status==='unverified_cash' || o.status==='pending_transfer';
-    const canComplete = o.status==='processing';
-    const ap=qs('#btn-approve'), dn=qs('#btn-done');
-    if(ap){ ap.disabled=!canApprove; ap.classList.toggle('opacity-50 cursor-not-allowed',!canApprove); }
-    if(dn){ dn.disabled=!canComplete; dn.classList.toggle('opacity-50 cursor-not-allowed',!canComplete); }
   }
   function renderThreads(){
     const root=qs('#chat-threads'); if(!root) return;
     root.innerHTML='';
     const pending = orders.filter(o=>o.status==='unverified_cash'||o.status==='pending_transfer');
-    const q=qs('#chat-count'); if(q) q.textContent = pending.length ? pending.length+' đơn chờ' : '';
+    const q=qs('#chat-count'); if(q) q.textContent = pending.length ? pending.length+' đơn' : '';
     orders
       .sort((a,b)=>b.createdAt-a.createdAt)
       .forEach(o=>{
         const unread = !useFirebase && o.chat && o.chat.some(function(m){ return m.from==='customer' && !m.read; });
         const isSelected = o.id===selectedId;
         const row=el('div','flex items-center justify-between rounded-lg p-3 cursor-pointer transition '+(isSelected?'bg-accent/20 border border-accent/50':'bg-gray-700/50 hover:bg-gray-700 border border-white/5'));
-        const left=el('div','');
-        left.appendChild(el('div','text-sm font-medium','#'+o.id));
+        const left=el('div','flex-1 min-w-0');
+        left.appendChild(el('div','text-sm font-medium truncate','#'+o.id));
         const c=o.customer;
-        left.appendChild(el('div','text-xs text-gray-500', c?.name||''));
+        left.appendChild(el('div','text-xs text-gray-500 truncate', c?.name||'Khách'));
         const last = (o.chat||[]).slice(-1)[0];
-        const lastTxt = useFirebase ? 'Nhắn tin' : (last ? (last.type==='text'? last.content.slice(0,30)+'...' : 'Ảnh biên lai') : 'Chưa có tin nhắn');
-        left.appendChild(el('div','text-xs text-gray-400 truncate max-w-[180px]', lastTxt));
+        const lastTxt = useFirebase ? 'Đã nhắn' : (last ? (last.type==='text'? last.content.slice(0,25)+'...' : '📷 Ảnh') : '---');
+        left.appendChild(el('div','text-xs text-gray-400 truncate max-w-[150px]', lastTxt));
         const dot = el('span','w-2 h-2 rounded-full shrink-0 '+(unread?'bg-accent animate-pulse':'bg-transparent'),'');
         row.appendChild(left); row.appendChild(dot);
         row.addEventListener('click', ()=>{
@@ -234,12 +312,18 @@ const AdminState = (() => {
     if (useFirebase) {
       db.collection('orders').doc(id).update({ status: status }).then(function () {
         o.status = status;
-        renderDetail();
-      }).catch(function () { alert('Cập nhật trạng thái thất bại.'); });
+        showDetailModal();
+        renderThreads();
+        Toast.success(`✓ Cập nhật trạng thái thành công: ${statusMap[status].label}`);
+      }).catch(function (err) { 
+        Toast.error('❌ Cập nhật trạng thái thất bại: ' + err.message);
+      });
     } else {
       o.status = status;
       renderOrders();
-      renderDetail();
+      showDetailModal();
+      renderThreads();
+      Toast.success(`✓ Cập nhật trạng thái thành công: ${statusMap[status].label}`);
     }
   }
   function exportDay(){
@@ -263,16 +347,36 @@ const AdminState = (() => {
     b1&&b1.addEventListener('click', exportDay); b2&&b2.addEventListener('click', exportDay);
     ba&&ba.addEventListener('click', ()=>{ audioEnabled=true; });
     ['#filter-status','#filter-method','#filter-search','#filter-date'].forEach(s=>{ const e=qs(s); e&&e.addEventListener('input', renderOrders); e&&e.addEventListener('change', renderOrders); });
-    const ap=qs('#btn-approve'), dn=qs('#btn-done'), cc=qs('#btn-cancel'), ff=qs('#btn-fail');
+    
+    // Modal buttons
+    const ap=qs('#modal-btn-approve'), dn=qs('#modal-btn-done'), cc=qs('#modal-btn-cancel'), ff=qs('#modal-btn-fail');
+    const doneClose = qs('#modal-detail-close'), modal = qs('#order-detail-modal');
     ap&&ap.addEventListener('click', ()=>{ if(selectedId){ updateStatus(selectedId,'processing'); }});
     dn&&dn.addEventListener('click', ()=>{ if(selectedId){ updateStatus(selectedId,'completed'); }});
     cc&&cc.addEventListener('click', ()=>{ if(selectedId){ updateStatus(selectedId,'canceled'); }});
     ff&&ff.addEventListener('click', ()=>{ if(selectedId){ updateStatus(selectedId,'failed'); }});
+    if(doneClose){
+      doneClose.addEventListener('click', (e)=>{ 
+        e.preventDefault();
+        e.stopPropagation();
+        if(modal) { modal.style.display = 'none'; modal.classList.add('hidden'); }
+      });
+    }
+    if(modal){
+      modal.addEventListener('click', (e)=>{ 
+        if(e.target === modal) {
+          modal.style.display = 'none';
+          modal.classList.add('hidden');
+        }
+      });
+    }
+    
+    // Chat buttons
     const send=qs('#chat-send'), up=qs('#chat-upload'), input=qs('#chat-input');
     send&&send.addEventListener('click', ()=>{
       const t=input.value.trim(); if(!t||!selectedId) return;
       if (useFirebase) {
-        db.collection('orders').doc(selectedId).collection('messages').add({ from:'admin', type:'text', content:t, createdAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(function(){ alert('Gửi thất bại.'); });
+        db.collection('orders').doc(selectedId).collection('messages').add({ from:'admin', type:'text', content:t, createdAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(function(){ Toast.error('❌ Gửi tin nhắn thất bại'); });
         input.value='';
       } else {
         const o=orders.find(x=>x.id===selectedId); if(o) o.chat.push({from:'admin',type:'text',content:t});
@@ -284,7 +388,7 @@ const AdminState = (() => {
       const r=new FileReader();
       r.onload=function(){
         if (useFirebase) {
-          db.collection('orders').doc(selectedId).collection('messages').add({ from:'admin', type:'image', content:r.result, createdAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(function(){ alert('Gửi ảnh thất bại.'); });
+          db.collection('orders').doc(selectedId).collection('messages').add({ from:'admin', type:'image', content:r.result, createdAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(function(){ Toast.error('❌ Gửi ảnh thất bại'); });
         } else {
           const o=orders.find(x=>x.id===selectedId); if(o) o.chat.push({from:'admin',type:'image',content:r.result});
           renderDetail();
@@ -339,13 +443,22 @@ const AdminState = (() => {
           {type:'input',id:'it-name',value:it.name,placeholder:'Tên món'},
           {type:'input',id:'it-price',value:String(it.priceK),placeholder:'Giá (k)'},
           {type:'input',id:'it-desc',value:it.desc||'',placeholder:'Mô tả'},
-          {type:'input',id:'it-img',value:it.img||'',placeholder:'Link ảnh'},
+          {type:'file',id:'it-img',value:it.img||'',placeholder:'Chọn ảnh mới (để trống giữ nguyên)', accept:'image/*'},
           {type:'select',id:'it-cat',value:it.cat,options:categories.map(c=>({value:c.id,label:c.name}))}
-        ], ()=>{
+        ], async()=>{
           it.name=qs('#it-name').value.trim()||it.name;
           const p=Number(qs('#it-price').value); it.priceK=isNaN(p)?it.priceK:Math.round(p);
-          it.desc=qs('#it-desc').value.trim(); it.img=qs('#it-img').value.trim(); it.cat=qs('#it-cat').value;
-          persistMenu(); renderItems();
+          it.desc=qs('#it-desc').value.trim(); it.cat=qs('#it-cat').value;
+          const fileInput=qs('#it-img');
+          let loadingToast = null;
+          if(fileInput.files[0]){
+            loadingToast = Toast.loading('🔄 Đang nén ảnh...');
+            const compressed=await ImageUtils.compressMenuImage(fileInput.files[0]);
+            if(loadingToast) Toast.dismiss(loadingToast);
+            if(!compressed){ Toast.error('❌ Nén ảnh thất bại'); return; }
+            it.img=compressed;
+          }
+          persistMenu(); renderItems(); Toast.success('✓ Cập nhật món thành công');
         });
       });
       del.addEventListener('click', ()=>{
@@ -363,10 +476,33 @@ const AdminState = (() => {
       if(f.type==='input'){ const i=el('input',inputCls,{toString:()=>''}); i.id=f.id; i.value=f.value||''; i.placeholder=f.placeholder||''; b.appendChild(i); }
       else if(f.type==='select'){ const s=el('select',inputCls); s.id=f.id; (f.options||[]).forEach(o=>{ const op=document.createElement('option'); op.value=o.value; op.textContent=o.label; s.appendChild(op); }); s.value=f.value||''; b.appendChild(s); }
       else if(f.type==='text'){ const d=el('div','text-sm text-gray-400',f.value||''); d.id=f.id; b.appendChild(d); }
+      else if(f.type==='file'){ 
+        const wrapper=el('div','space-y-2');
+        const input=el('input',inputCls); input.type='file'; input.id=f.id; input.accept=f.accept||'image/*'; input.placeholder=f.placeholder||'';
+        const preview=el('img','w-full rounded-lg border border-white/20 hidden'); preview.id=f.id+'-preview';
+        const fileInfo=el('div','text-xs text-gray-400'); fileInfo.id=f.id+'-info';
+        
+        // Show existing image if provided
+        if(f.value && f.value.startsWith('data:')) {
+          preview.src=f.value; preview.classList.remove('hidden'); fileInfo.textContent='(ảnh hiện tại)';
+        }
+        
+        input.addEventListener('change', async(e)=>{
+          const file=e.target.files[0];
+          if(!file) return;
+          if(!ImageUtils.isValidImage(file)){ Toast.error('❌ Ảnh không hợp lệ hoặc quá lớn'); return; }
+          fileInfo.textContent=`📎 ${file.name} (${ImageUtils.formatFileSize(file.size)})`;
+          const reader=new FileReader();
+          reader.onload=(ev)=>{ preview.src=ev.target.result; preview.classList.remove('hidden'); };
+          reader.readAsDataURL(file);
+        });
+        wrapper.appendChild(input); wrapper.appendChild(preview); wrapper.appendChild(fileInfo);
+        b.appendChild(wrapper);
+      }
     });
     m.classList.remove('hidden');
     function done(){ m.classList.add('hidden'); ok.removeEventListener('click', handler); cc.removeEventListener('click', cancel); }
-    function handler(){ onOk&&onOk(); done(); }
+    async function handler(){ if(onOk) { await onOk(); } done(); }
     function cancel(){ done(); }
     ok.addEventListener('click', handler); cc.addEventListener('click', cancel);
   }
@@ -379,13 +515,22 @@ const AdminState = (() => {
       {type:'input',id:'it-name',placeholder:'Tên món'},
       {type:'input',id:'it-price',placeholder:'Giá (k)'},
       {type:'input',id:'it-desc',placeholder:'Mô tả'},
-      {type:'input',id:'it-img',placeholder:'Link ảnh'},
+      {type:'file',id:'it-img',placeholder:'Chọn ảnh', accept:'image/*'},
       {type:'select',id:'it-cat',options:categories.map(c=>({value:c.id,label:c.name}))}
-    ], ()=>{
-      const name=qs('#it-name').value.trim(); const p=Number(qs('#it-price').value||'0'); const desc=qs('#it-desc').value.trim(); const img=qs('#it-img').value.trim(); const cat=qs('#it-cat').value;
-      if(!name||isNaN(p)) return;
+    ], async()=>{
+      const name=qs('#it-name').value.trim(); const p=Number(qs('#it-price').value||'0'); const desc=qs('#it-desc').value.trim(); const cat=qs('#it-cat').value;
+      if(!name||isNaN(p)||p<=0) { Toast.error('❌ Tên và giá không hợp lệ'); return; }
+      let img='';
+      const fileInput=qs('#it-img'); 
+      let loadingToast = null;
+      if(fileInput.files[0]){
+        loadingToast = Toast.loading('🔄 Đang nén ảnh...');
+        img=await ImageUtils.compressMenuImage(fileInput.files[0]);
+        if(loadingToast) Toast.dismiss(loadingToast);
+        if(!img){ Toast.error('❌ Nén ảnh thất bại'); return; }
+      }
       items.push({id:'it-'+Date.now(), name, priceK:Math.round(p), desc, img, cat, visible:true});
-      persistMenu(); renderItems();
+      persistMenu(); renderItems(); Toast.success('✓ Thêm món thành công');
     }));
     renderCategories(); renderItems();
   }
@@ -443,10 +588,10 @@ const AdminState = (() => {
       });
     } else {
       renderCategories(); renderItems();
-      renderOrders(); renderDetail(); renderReport(); renderThreads();
+      renderOrders(); renderThreads(); renderReport();
     }
     const dbg = document.getElementById('admin-debug');
-    if (dbg) dbg.textContent = useFirebase ? 'Firebase • v20260301-4' : orders.length + ' đơn • v20260301-4';
+    if (dbg) dbg.textContent = useFirebase ? 'Firebase • v20260302-1' : orders.length + ' đơn • v20260302-1';
   });
   return { orders, updateStatus, statusMap };
 })();

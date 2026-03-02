@@ -42,19 +42,20 @@
 
     <nav class="max-w-6xl mx-auto px-4 md:px-8 mb-4 mt-4">
       <div class="flex gap-2 flex-wrap">
-        <button data-tab="orders" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">Đơn hàng</button>
-        <button data-tab="chat" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">Chat</button>
-        <button data-tab="menu" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">Quản lý Menu</button>
-        <button data-tab="report" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">Báo cáo</button>
-        <button data-tab="settings" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">Cài đặt</button>
+        <button data-tab="orders" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">📋 Đơn hàng</button>
+        <button data-tab="chat" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">💬 Chat</button>
+        <button data-tab="menu" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">🍽️ Menu</button>
+        <button data-tab="report" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">📈 Báo cáo</button>
+        <button data-tab="settings" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">⚙️ Cài đặt</button>
       </div>
     </nav>
     <div id="admin-debug" class="max-w-6xl mx-auto px-4 md:px-8 mb-2 text-xs text-gray-500"></div>
 
-    <main class="max-w-6xl mx-auto px-4 md:px-8 pb-10 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <main class="max-w-6xl mx-auto px-4 md:px-8 pb-10 space-y-4">
+      <!-- TAB: Đơn hàng (Order List) -->
       <section id="tab-orders" class="rounded-2xl bg-gray-800 border border-white/10 p-4 shadow-soft">
         <div class="flex items-center justify-between mb-3">
-          <div class="font-semibold">Đơn hàng</div>
+          <div class="font-semibold">Danh sách Đơn hàng</div>
           <div class="flex items-center gap-2">
             <button id="export-day" class="px-3 py-1 rounded-lg bg-accent text-white text-xs">Xuất báo cáo</button>
             <button id="enable-audio" class="px-3 py-1 rounded-lg bg-gray-600 text-gray-200 text-xs">Bật âm thanh</button>
@@ -87,53 +88,50 @@
         <div id="order-list" class="space-y-3 max-h-[70vh] overflow-y-auto"></div>
       </section>
 
-      <section id="tab-chat" class="rounded-2xl bg-gray-800 border border-white/10 p-4 shadow-soft hidden md:col-span-2">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div class="lg:col-span-4">
-            <div class="font-semibold mb-2 text-sm flex items-center justify-between">
-              <span>Đơn hàng cần xử lý</span>
+      <!-- TAB: Chat (Messaging Only) -->
+      <section id="tab-chat" class="rounded-2xl bg-gray-800 border border-white/10 p-4 shadow-soft hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[70vh]">
+          <!-- Sidebar: Order Threads -->
+          <div class="lg:col-span-3 flex flex-col border-r border-white/10">
+            <div class="font-semibold mb-3 text-sm flex items-center justify-between pb-3 border-b border-white/10">
+              <span>📋 Danh sách Đơn</span>
               <span id="chat-count" class="text-xs text-gray-500"></span>
             </div>
-            <div id="chat-threads" class="space-y-2 max-h-[60vh] overflow-y-auto rounded-lg border border-white/10 bg-gray-900/50 p-2"></div>
+            <div id="chat-threads" class="flex-1 space-y-2 overflow-y-auto"></div>
           </div>
-          <div class="lg:col-span-8">
-            <div id="chat-order-info" class="rounded-xl bg-gray-900/70 border border-white/10 p-4 mb-3 hidden">
-              <div class="font-semibold mb-2" id="detail-title">Chọn đơn để xem chi tiết</div>
-              <div id="detail-customer" class="text-xs text-gray-400 mb-2"></div>
-              <div id="detail-items" class="space-y-2 mb-2"></div>
-              <div class="flex items-center justify-between text-sm">
-                <span>Tổng:</span>
-                <span id="detail-total" class="font-semibold"></span>
+
+          <!-- Main: Chat Messages -->
+          <div class="lg:col-span-9 flex flex-col">
+            <!-- Chat History -->
+            <div class="flex-1 mb-3 overflow-y-auto bg-gray-900/50 rounded-lg border border-white/10 p-4">
+              <div id="chat-empty-state" class="h-full flex items-center justify-center text-center text-gray-500 text-sm">
+                <div>
+                  <div class="text-2xl mb-2">💬</div>
+                  <div>Chọn một đơn hàng để xem và trả lời tin nhắn</div>
+                </div>
               </div>
-              <div class="mt-2">
-                <div class="text-xs text-gray-500 mb-1">Ảnh biên lai</div>
-                <img id="bill-preview" class="w-full max-h-32 object-contain rounded-lg border border-white/10 bg-gray-800 hidden" alt="">
+              <div id="chat-log" class="space-y-3 hidden"></div>
+            </div>
+
+            <!-- Chat Input Section -->
+            <div id="chat-input-section" class="hidden bg-gray-900/70 border border-white/10 rounded-lg p-3">
+              <!-- Quick Replies -->
+              <div class="mb-2">
+                <div class="text-xs text-gray-500 mb-1">Phản hồi nhanh</div>
+                <div class="flex flex-wrap gap-1" id="quick-replies">
+                  <button class="qr px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">Đã xác minh, đơn đang pha chế</button>
+                  <button class="qr px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">Đơn đã xác nhận. Cảm ơn!</button>
+                  <button class="qr px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">Vui lòng chờ</button>
+                </div>
               </div>
-            </div>
-            <div id="chat-empty" class="rounded-xl bg-gray-900/50 border border-dashed border-white/20 p-8 text-center text-gray-500 text-sm mb-3">
-              Chọn đơn hàng bên trái để xem chi tiết và phản hồi khách
-            </div>
-            <div class="rounded-xl bg-gray-900/70 border border-white/10 p-4">
-              <div class="font-semibold mb-2 text-sm">Tin nhắn</div>
-              <div id="chat-log" class="h-56 overflow-y-auto space-y-2 p-3 bg-gray-900/50 rounded-lg mb-3"></div>
-              <div class="flex items-center gap-2 mb-2">
-                <input id="chat-input" class="flex-1 rounded-lg border border-white/20 bg-gray-800 text-gray-200 p-2 text-sm placeholder-gray-500 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn phản hồi..." />
-                <label class="cursor-pointer px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 text-sm shrink-0">Tải ảnh
+
+              <!-- Message Input -->
+              <div class="flex items-center gap-2">
+                <input id="chat-input" class="flex-1 rounded-lg border border-white/20 bg-gray-800 text-gray-200 p-2 text-sm placeholder-gray-500 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn..." />
+                <label class="cursor-pointer px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 text-sm shrink-0">📷
                   <input id="chat-upload" type="file" accept="image/*" class="hidden" />
                 </label>
                 <button id="chat-send" class="px-4 py-2 rounded-lg bg-accent text-white text-sm shrink-0">Gửi</button>
-              </div>
-              <div class="text-xs text-gray-500 mb-1">Phản hồi nhanh</div>
-              <div class="flex flex-wrap gap-2" id="quick-replies">
-                <button class="qr px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">Đã xác minh, đơn đang pha chế</button>
-                <button class="qr px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">Đơn đã xác nhận. Cảm ơn bạn!</button>
-                <button class="qr px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">Vui lòng chờ ít phút</button>
-              </div>
-              <div class="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-white/10">
-                <button id="btn-fail" class="px-4 py-2 rounded-lg bg-red-600/80 hover:bg-red-600 text-white text-sm">Thất bại</button>
-                <button id="btn-cancel" class="px-4 py-2 rounded-lg bg-red-800/80 hover:bg-red-800 text-white text-sm">Hủy</button>
-                <button id="btn-approve" class="px-4 py-2 rounded-lg bg-yellowx text-gray-900 font-medium text-sm">Duyệt</button>
-                <button id="btn-done" class="px-4 py-2 rounded-lg bg-success text-white text-sm">Hoàn thành</button>
               </div>
             </div>
           </div>
@@ -187,8 +185,73 @@
         </div>
       </section>
     </main>
+
+    <!-- MODAL: Order Detail -->
+    <div id="order-detail-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-gray-800 border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto my-8">
+        <!-- Header -->
+        <div class="sticky top-0 bg-gray-800 border-b border-white/10 px-6 py-4 flex items-center justify-between">
+          <div class="font-serif italic text-2xl" id="modal-detail-bill">Đơn #BILL000000</div>
+          <div class="flex items-center gap-3">
+            <span id="modal-detail-method-badge" class="px-2 py-1 rounded text-[10px] bg-amber-500/30 text-amber-200">TM</span>
+            <span id="modal-detail-status-badge" class="px-2 py-1 rounded text-xs bg-blue-500/30 text-blue-200">Đang pha chế</span>
+            <button id="modal-detail-close" class="text-gray-400 hover:text-gray-200 text-2xl leading-none">×</button>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="px-6 py-4 space-y-4">
+          <!-- Time -->
+          <div class="text-xs text-gray-400" id="modal-detail-time">📅 16:45 - 02/03/2026</div>
+
+          <!-- Customer Info -->
+          <div class="rounded-xl bg-gray-900/70 border border-white/10 p-4">
+            <div class="text-sm text-gray-300 mb-1 font-medium">👤 Thông tin khách hàng</div>
+            <div id="modal-detail-customer" class="text-sm text-gray-400"></div>
+          </div>
+
+          <!-- Address -->
+          <div class="rounded-xl bg-gray-900/70 border border-white/10 p-4">
+            <div class="text-xs text-gray-400 mb-2">📍 Địa chỉ giao hàng / Số bàn</div>
+            <div id="modal-detail-address" class="text-sm text-gray-200"></div>
+          </div>
+
+          <!-- Items -->
+          <div class="rounded-xl bg-gray-900/70 border border-white/10 p-4">
+            <div class="text-sm text-gray-300 mb-3 font-medium">🛍️ Danh sách Sản phẩm</div>
+            <div id="modal-detail-items" class="space-y-2"></div>
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
+              <span class="text-sm text-gray-300">Tổng cộng:</span>
+              <span id="modal-detail-total" class="font-semibold text-lg text-success">0đ</span>
+            </div>
+          </div>
+
+          <!-- Bill Preview -->
+          <div id="modal-detail-bill-section" class="rounded-xl bg-gray-900/70 border border-white/10 p-4 hidden">
+            <div class="text-xs text-gray-400 mb-2 font-medium">📸 Ảnh biên lai chuyển khoản</div>
+            <img id="modal-detail-bill-preview" alt="" class="w-full max-h-48 object-contain rounded-lg border border-white/10 bg-gray-800 cursor-pointer hover:opacity-90" title="Bấp để xem toàn cảnh">
+          </div>
+
+          <!-- Notes -->
+          <div id="modal-detail-note-section" class="rounded-xl bg-gray-900/70 border border-white/10 p-4 hidden">
+            <div class="text-xs text-gray-400 mb-2 font-medium">📝 Ghi chú đặt hàng</div>
+            <div id="modal-detail-note" class="text-sm text-gray-300 italic"></div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="sticky bottom-0 bg-gray-800 border-t border-white/10 px-6 py-4 flex items-center justify-end gap-2">
+          <button id="modal-btn-fail" class="px-4 py-2 rounded-lg bg-red-600/80 hover:bg-red-600 text-white text-sm font-medium transition">Thất bại</button>
+          <button id="modal-btn-cancel" class="px-4 py-2 rounded-lg bg-red-800/80 hover:bg-red-800 text-white text-sm font-medium transition">Hủy</button>
+          <button id="modal-btn-approve" class="px-4 py-2 rounded-lg bg-yellowx hover:bg-yellowx/90 text-gray-900 font-medium text-sm transition">Duyệt</button>
+          <button id="modal-btn-done" class="px-4 py-2 rounded-lg bg-success hover:bg-green-600 text-white text-sm font-medium transition">✓ Hoàn thành</button>
+        </div>
+      </div>
+    </div>
   </div>
+  <script src="toast.js" defer></script>
+  <script src="image-utils.js" defer></script>
   <script src="menu-store.js" defer></script>
-  <script src="admin.js?v=20260301-2" defer></script>
+  <script src="admin.js?v=20260302-1" defer></script>
 </body>
 </html>

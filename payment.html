@@ -283,14 +283,12 @@
       if (method === 'transfer' && receiptInput.files && receiptInput.files[0]) {
         try {
           submitBtn.disabled = true
-          submitBtn.textContent = 'Đang tải ảnh...'
-          const ref = window.bbStorage.ref().child('bills/' + bill + '_' + Date.now())
-          await ref.put(receiptInput.files[0])
-          billUrl = await ref.getDownloadURL()
+          submitBtn.textContent = 'Đang nén ảnh...'
+          billUrl = await ImageUtils.compressReceiptImage(receiptInput.files[0])
         } catch (err) {
           submitBtn.disabled = false
           submitBtn.textContent = 'GỬI ĐƠN'
-          showToast('Tải ảnh biên lai thất bại. Kiểm tra kết nối mạng.', true)
+          showToast('Nén ảnh biên lai thất bại. Hãy thử ảnh khác.', true)
           return
         }
       }
@@ -338,6 +336,8 @@
     })
     document.getElementById('copy-hotline').addEventListener('click', () => copyText('0985679565'))
   </script>
+  <!-- Image compression utilities for receipt upload -->
+  <script src="image-utils.js" defer></script>
   <!-- Nạp chat.js để có thể mở box chat ngay tại trang này -->
   <script src="chat.js?v=20260301-1" defer></script>
 </body>
