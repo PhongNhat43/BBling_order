@@ -69,16 +69,22 @@
       this.uploadBtn = document.getElementById(SELECTORS.uploadBtn);
       this.upload = document.getElementById(SELECTORS.upload);
       this.firstOpen = true;
+      this.messagesUnsub = null; // Store unsubscribe function
+      this.lastProcessedTime = Date.now(); // Only show messages after initialization
       if (!this.toggle || !this.panel || !this.log) {
         console.warn('[B.BLING Chat] UI elements not found. VERSION:', VERSION);
         return;
       }
       this.toggle.setAttribute('title', `B.BLING Chat ${VERSION}`);
+      // Guest chat mode: use sessionId if no orderId
       this.orderId = (window.bbOrderId || new URLSearchParams(location.search).get('orderId')) || null;
-      this.useFirebase = !!(this.orderId && window.bbDb);
+      this.sessionId = this.orderId || this.getOrCreateSessionId();
+      this.isGuestMode = !this.orderId;
+      this.useFirebase = !!(window.bbDb);
       this.bindEvents();
       if (this.useFirebase) this.setupFirebaseChat();
-      console.log('[B.BLING Chat] Initialized VERSION:', VERSION, this.useFirebase ? '(Firebase)' : '');
+      console.log('[B.BLING Chat] Initialized VERSION:', VERSION, 
+        this.useFirebase ? (this.isGuestMode ? '(Firebase Guest)' : '(Firebase Order)') : '(Local)');
       // auto open from index?chat=open or session flag
       const sp = new URLSearchParams(location.search);
       const auto = sp.get('chat') === 'open' || (sessionStorage.getItem('open_chat') === '1');
@@ -100,20 +106,59 @@
       if (this.upload) this.upload.addEventListener('change', (e) => this.handleUpload(e));
     }
 
+    getOrCreateSessionId() {
+      const STORAGE_KEY = 'bb_chat_session';
+      let sid = null;
+      try {
+        sid = localStorage.getItem(STORAGE_KEY);
+      } catch(e) {}
+      if (!sid) {
+        sid = 'GUEST_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        try {
+          localStorage.setItem(STORAGE_KEY, sid);
+        } catch(e) {}
+      }
+      return sid;
+    }
+
     setupFirebaseChat() {
       const db = window.bbDb;
-      db.collection('orders').doc(this.orderId).collection('messages').orderBy('createdAt').onSnapshot((snap) => {
+      const collectionPath = this.isGuestMode ? 'guestChats' : 'orders';
+      const docId = this.isGuestMode ? this.sessionId : this.orderId;
+      
+      // Cleanup previous listener if exists
+      if (this.messagesUnsub) {
+        this.messagesUnsub();
+        this.messagesUnsub = null;
+      }
+      
+      // Initialize guest chat document if needed
+      if (this.isGuestMode) {
+        db.collection('guestChats').doc(docId).set({
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+          sessionId: docId
+        }, { merge: true }).catch(e => console.warn('Init guest chat failed:', e));
+      }
+      
+      this.messagesUnsub = db.collection(collectionPath).doc(docId).collection('messages').orderBy('createdAt').onSnapshot((snap) => {
         snap.docChanges().forEach((ch) => {
           if (ch.type !== 'added') return;
           const d = ch.doc.data();
+          
+          // Only render messages from admin AND only new messages (after init)
           if (d.from === 'admin') {
-            this.pushStoreText(d.content);
-          } else if (d.from === 'customer') {
+            const msgTime = d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : 0;
+            // Skip old messages (before this session started)
+            if (msgTime > 0 && msgTime < this.lastProcessedTime) {
+              return;
+            }
+            
             if (d.type === 'image') {
               const wrap = document.createElement('div');
-              wrap.className = 'max-w-[80%] ml-auto';
+              wrap.className = 'max-w-[80%] mr-auto';
               const bubble = document.createElement('div');
-              bubble.className = 'bg-accent text-white px-3 py-2 rounded-2xl rounded-bl-lg shadow-soft';
+              bubble.className = 'bg-white px-3 py-2 rounded-2xl rounded-br-lg border border-primary/10 shadow-soft';
               const img = document.createElement('img');
               img.src = d.content;
               img.className = 'max-h-32 rounded-md';
@@ -121,13 +166,7 @@
               wrap.appendChild(bubble);
               this.log.appendChild(wrap);
             } else {
-              const wrap = document.createElement('div');
-              wrap.className = 'max-w-[80%] ml-auto';
-              const bubble = document.createElement('div');
-              bubble.className = 'bg-accent text-white px-3 py-2 rounded-2xl rounded-bl-lg shadow-soft';
-              bubble.textContent = d.content || '';
-              wrap.appendChild(bubble);
-              this.log.appendChild(wrap);
+              this.pushStoreText(d.content);
             }
             this.autoScroll();
           }
@@ -205,7 +244,18 @@
       if (!text) return;
       this.input.value = '';
       if (this.useFirebase) {
-        window.bbDb.collection('orders').doc(this.orderId).collection('messages').add({
+        const collectionPath = this.isGuestMode ? 'guestChats' : 'orders';
+        const docId = this.isGuestMode ? this.sessionId : this.orderId;
+        const db = window.bbDb;
+        
+        // Update lastMessageAt for guest chats
+        if (this.isGuestMode) {
+          db.collection('guestChats').doc(docId).update({
+            lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
+          }).catch(() => {});
+        }
+        
+        db.collection(collectionPath).doc(docId).collection('messages').add({
           from: 'customer', type: 'text', content: text,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).catch(() => alert('Gửi thất bại. Kiểm tra mạng.'));
@@ -229,7 +279,18 @@
         img.className = 'max-h-32 rounded-md';
         img.addEventListener('error', () => img.removeAttribute('srcset'), { once: true });
         if (this.useFirebase) {
-          window.bbDb.collection('orders').doc(this.orderId).collection('messages').add({
+          const collectionPath = this.isGuestMode ? 'guestChats' : 'orders';
+          const docId = this.isGuestMode ? this.sessionId : this.orderId;
+          const db = window.bbDb;
+          
+          // Update lastMessageAt for guest chats
+          if (this.isGuestMode) {
+            db.collection('guestChats').doc(docId).update({
+              lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).catch(() => {});
+          }
+          
+          db.collection(collectionPath).doc(docId).collection('messages').add({
             from: 'customer', type: 'image', content: reader.result,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           }).catch(() => alert('Gửi ảnh thất bại.'));

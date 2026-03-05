@@ -28,73 +28,147 @@
                   linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02));
     }
     .shadow-soft{ box-shadow: 0 6px 20px rgba(62,39,35,.12); }
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body class="min-h-full bg-cream text-primary font-sans paper">
   <div class="min-h-screen p-4 pt-8">
     <div class="mx-auto max-w-md">
-      <div class="text-center mb-4">
-        <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/70 backdrop-blur shadow-soft">
-          <div class="font-serif italic text-2xl">B.BLING</div>
-          <span class="text-xs uppercase tracking-[0.2em]">Theo dõi</span>
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/90 backdrop-blur shadow-soft">
+          <a href="index.html" class="font-serif italic text-2xl text-primary hover:underline">B.BLING</a>
+          <div class="h-6 w-px bg-primary/20"></div>
+          <span class="text-xs uppercase tracking-[0.25em] font-semibold text-primary/60">Theo dõi đơn hàng</span>
         </div>
       </div>
 
       <div class="mb-4">
         <div class="flex gap-2">
-          <input id="search" class="flex-1 rounded-xl border border-primary/20 bg-white p-3 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập mã đơn, ví dụ BILL102" />
-          <button id="btn-search" class="px-4 rounded-xl bg-primary text-white font-semibold">Tìm</button>
+          <div class="relative flex-1">
+            <input id="search" class="w-full rounded-xl border border-primary/20 bg-white px-4 py-3 pl-11 outline-none focus:ring-2 focus:ring-accent/60 transition-all" placeholder="Nhập mã đơn, ví dụ BILL102" />
+            <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </div>
+          <button id="btn-search" class="px-5 rounded-xl bg-primary text-white font-semibold hover:shadow-lg active:scale-95 transition-all">
+            <span>Tìm</span>
+          </button>
         </div>
       </div>
 
-      <div id="status-card" class="rounded-2xl bg-white p-4 shadow-soft mb-4">
-        <div id="status-wait" class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center">
-            <svg class="w-5 h-5 animate-spin text-accent" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+      <div id="status-card" class="rounded-2xl bg-white shadow-soft mb-4 fade-in">
+        <div class="p-4">
+          <div id="status-wait" class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
+              <svg class="w-5 h-5 animate-spin text-accent" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+            </div>
+            <div>
+              <div class="font-medium" id="status-text">Đang chờ xác nhận...</div>
+            </div>
           </div>
-          <div>
-            <div class="font-medium" id="status-text">Đang chờ quầy xác nhận...</div>
-            <div class="text-xs text-primary/70">Vui lòng giữ kết nối, trạng thái cập nhật theo thời gian thực</div>
-          </div>
-        </div>
 
-        <div id="status-success" class="hidden items-center gap-3">
-          <div class="w-9 h-9 rounded-full bg-success/10 flex items-center justify-center">
-            <svg class="w-6 h-6 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          <div id="status-success" class="hidden flex items-center gap-3">
+            <div class="flex items-center flex-nowrap">
+              <span class="w-7 h-7 rounded-full bg-success/10 flex items-center justify-center">
+                <svg class="w-5 h-5 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+              </span>
+              <span class="font-medium text-primary ml-2 whitespace-nowrap">Hoàn thành</span>
+            </div>
           </div>
-          <div>
-            <div class="font-medium">Thanh toán thành công! Đồ uống của bạn đang được pha chế</div>
-            <div class="text-xs text-primary/70">Bạn sẽ nhận thông báo khi món đã sẵn sàng</div>
-          </div>
-        </div>
-        <div id="status-fail" class="hidden items-center gap-3">
-          <div class="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center">
-            <svg class="w-6 h-6 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </div>
-          <div>
-            <div class="font-medium" id="fail-title">Đơn hàng chưa được xác nhận</div>
-            <div class="text-xs text-primary/70" id="fail-desc">Vui lòng liên hệ quầy hoặc mở chat để được hỗ trợ.</div>
+
+          <div id="status-fail" class="hidden flex items-center gap-3">
+            <div class="flex items-center flex-nowrap">
+              <span class="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center">
+                <svg class="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </span>
+              <span class="font-medium text-primary ml-2 whitespace-nowrap" id="fail-title">Lỗi</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div id="order-box" class="rounded-2xl bg-white p-4 shadow-soft mb-4">
-        <div class="flex items-start justify-between">
-          <div>
-            <div class="font-serif italic mb-1">Chi tiết đơn</div>
-            <div id="order-id" class="text-xs text-primary/70">Mã đơn:</div>
+      <div id="order-box" class="rounded-3xl bg-white shadow-soft mb-4 fade-in">
+        <!-- Header -->
+        <div class="p-5 pb-4">
+          <div class="text-center mb-4">
+            <div class="font-serif italic text-xl text-primary mb-3">Chi tiết đơn hàng</div>
           </div>
-          <div id="method-badge" class="text-xs px-2 py-1 rounded-lg bg-cream border border-primary/10"></div>
+          
+          <div class="flex flex-col items-center gap-3">
+            <!-- Order ID with Copy -->
+            <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-cream">
+              <div id="order-id" class="text-sm text-primary font-semibold">Mã đơn:</div>
+              <button id="copy-order-btn" class="hidden p-2 rounded-lg hover:bg-white/50 active:scale-95 transition-all" title="Sao chép mã đơn" aria-label="Copy">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+            </div>
+            
+            <!-- Status Badge -->
+            <div class="flex items-center gap-2">
+              <div id="order-status-badge" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border">
+                <span id="status-icon" class="text-base">⏳</span>
+                <span id="status-label">Chờ xác nhận</span>
+              </div>
+            </div>
+            
+            <!-- Payment Method -->
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-primary/60">Phương thức thanh toán:</span>
+              <div id="method-badge" class="px-2 py-1 rounded-lg bg-cream border border-primary/10 text-primary font-semibold"></div>
+            </div>
+          </div>
         </div>
-        <div id="customer" class="mt-2 text-xs text-primary/80"></div>
-        <div id="order-list" class="divide-y divide-primary/10"></div>
-        <div class="mt-3 text-right text-sm">Tổng cộng: <span id="order-total" class="font-semibold"></span></div>
+
+        <!-- Customer Info Section -->
+        <div class="px-5 py-4 border-t border-primary/10">
+          <div class="text-sm font-semibold text-primary mb-3">Thông tin khách hàng</div>
+          <div class="space-y-2">
+            <div id="cust-name" class="text-sm font-semibold text-primary"></div>
+            <div id="cust-phone" class="text-xs text-primary/70"></div>
+            <div id="cust-address" class="text-xs text-primary/70"></div>
+            <div id="cust-location" class="text-xs text-primary/60 italic"></div>
+          </div>
+        </div>
+
+        <!-- Items List -->
+        <div class="px-5 py-4 border-t border-primary/10">
+          <div class="text-sm font-semibold text-primary mb-3">Sản phẩm đã đặt</div>
+          <div id="order-list" class="space-y-3 mb-4"></div>
+        </div>
+
+        <!-- Total Section -->
+        <div class="px-5 py-4 border-t border-primary/10">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-semibold text-primary">Tổng cộng:</span>
+            <span id="order-total" class="text-xl font-bold text-accent"></span>
+          </div>
+        </div>
       </div>
-    </div>
+      <div id="empty-state" class="hidden rounded-3xl bg-white shadow-soft text-center mb-4 fade-in">
+        <div class="p-8">
+          <div class="w-16 h-16 rounded-full bg-cream flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-primary/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="11" cy="11" r="8"/>
+              <path stroke-linecap="round" d="m21 21-4.35-4.35"/>
+            </svg>
+          </div>
+          <div class="font-serif italic text-lg text-primary mb-2" id="empty-title">Không tìm thấy đơn hàng</div>
+          <div class="text-sm text-primary/60 mb-6 max-w-xs mx-auto" id="empty-desc">Vui lòng kiểm tra lại mã đơn của bạn</div>
+          <button onclick="document.getElementById('search').focus()" class="px-5 py-2.5 text-sm font-semibold rounded-xl bg-primary text-white hover:shadow-lg active:scale-95 transition-all">Tìm lại</button>
+        </div>
+      </div>    </div>
   </div>
 
-  <button id="chat-toggle" class="fixed right-4 bottom-6 w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-soft active:scale-95">
-    <span class="text-2xl">✉</span>
+  <button id="chat-toggle" class="fixed right-4 bottom-6 w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-soft hover:shadow-lg active:scale-95 transition-all">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+    </svg>
   </button>
   <div id="chat-panel" class="hidden fixed right-4 bottom-24 w-[90%] max-w-[360px] rounded-xl bg-white shadow-soft p-3">
     <div class="flex items-center justify-between mb-2">
@@ -116,116 +190,222 @@
     const params = new URLSearchParams(location.search)
     const mode = params.get('mode') || ''
     const orderId = params.get('orderId') || (mode === 'search' ? '' : '')
+    
+    // Clear URL parameters on page load
+    if (window.location.search) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
     const PLACEHOLDER_IMG = 'https://images.unsplash.com/photo-1500336624523-d727130c3328?auto=format&fit=crop&w=800&q=60'
 
     function formatVND(k) { return (k * 1000).toLocaleString('vi-VN') + ' đ' }
+
+    // Copy toast notification
+    const copyToast = document.createElement('div')
+    copyToast.className = 'fixed left-1/2 -translate-x-1/2 bottom-6 px-3 py-2 rounded-lg bg-success text-white text-xs shadow-soft hidden z-50'
+    copyToast.textContent = 'Đã sao chép'
+    document.body.appendChild(copyToast)
+    function showCopyToast(){
+      copyToast.classList.remove('hidden')
+      setTimeout(()=>copyToast.classList.add('hidden'), 1200)
+    }
+
+    function getStatusInfo(dbStatus) {
+      const statusMap = {
+        'unverified_cash': { label: 'Chờ xác nhận', icon: '⏳', color: 'bg-amber-50 text-amber-900 border-amber-200' },
+        'pending_transfer': { label: 'Xác minh thanh toán', icon: '🔄', color: 'bg-amber-50 text-amber-900 border-amber-200' },
+        'processing': { label: 'Đang pha chế', icon: '☕', color: 'bg-blue-50 text-blue-900 border-blue-200' },
+        'completed': { label: 'Hoàn thành', icon: '✓', color: 'bg-green-50 text-green-900 border-green-200' },
+        'failed': { label: 'Thất bại', icon: '✗', color: 'bg-red-50 text-red-900 border-red-200' },
+        'canceled': { label: 'Huỷ', icon: '⊘', color: 'bg-gray-50 text-gray-900 border-gray-200' }
+      }
+      return statusMap[dbStatus] || { label: 'Chưa biết', icon: '?', color: 'bg-gray-50 text-gray-900 border-gray-200' }
+    }
 
     function imgEl(src) {
       const im = document.createElement('img')
       im.src = src || PLACEHOLDER_IMG
       im.alt = ''
-      im.className = 'w-10 h-10 rounded-xl object-cover border border-primary/10'
+      im.className = 'w-16 h-16 rounded-xl object-cover border border-primary/10'
       im.onerror = () => { im.src = PLACEHOLDER_IMG }
       return im
     }
 
-    function renderOrder(data) {
+    function renderOrder(data, status) {
       const items = data?.items || []
       const customer = data?.customer || {}
       const method = data?.method || 'cash'
       const total = data?.totalK ? data.totalK * 1000 : items.reduce((s, i) => s + (i.qty || 0) * (i.priceK || 0) * 1000, 0)
-      document.getElementById('order-id').textContent = orderId ? 'Mã đơn: #' + orderId : ''
+      
+      // Order ID
+      const orderIdEl = document.getElementById('order-id')
+      orderIdEl.textContent = orderId ? 'Mã đơn: #' + orderId : 'Mã đơn:'
+      orderIdEl.title = orderId ? '#' + orderId : ''
+      const copyBtn = document.getElementById('copy-order-btn')
+      if (copyBtn) {
+        if (orderId) copyBtn.classList.remove('hidden')
+        else copyBtn.classList.add('hidden')
+      }
+      
+      // Payment Method Badge
       const badge = document.getElementById('method-badge')
       badge.textContent = method === 'transfer' ? 'Chuyển khoản' : 'Tiền mặt'
-      badge.className = 'text-xs px-2 py-1 rounded-lg ' + (method === 'transfer' ? 'bg-yellow-50' : 'bg-orange-50') + ' border border-primary/10'
-      const custEl = document.getElementById('customer')
+      badge.className = 'px-2 py-1 rounded-lg bg-cream border border-primary/10 text-primary font-semibold'
+      
+      // Customer Info
+      document.getElementById('cust-name').textContent = customer.name || 'Chưa có thông tin'
+      document.getElementById('cust-phone').textContent = customer.phone ? 'Số điện thoại: ' + customer.phone : ''
+      document.getElementById('cust-address').textContent = customer.address ? 'Địa chỉ nhận hàng: ' + customer.address : ''
       const loc = [customer.city, customer.district, customer.ward].filter(Boolean).join(' · ')
-      custEl.textContent = [customer.name, customer.phone, customer.address, loc].filter(Boolean).join(' · ') || 'Chưa có thông tin'
+      document.getElementById('cust-location').textContent = loc || ''
+      
+      // Items List
       const list = document.getElementById('order-list')
       list.innerHTML = ''
       items.forEach(i => {
         const row = document.createElement('div')
-        row.className = 'py-2 flex items-center justify-between'
-        const left = document.createElement('div')
-        left.className = 'flex items-center gap-3'
-        left.appendChild(imgEl(i.img))
-        const txt = document.createElement('div')
+        row.className = 'flex items-center gap-3 py-2'
+        
+        // Image
+        const imgWrapper = document.createElement('div')
+        imgWrapper.className = 'flex-shrink-0'
+        imgWrapper.appendChild(imgEl(i.img))
+        
+        // Product Info
+        const info = document.createElement('div')
+        info.className = 'flex-1 min-w-0'
+        
         const name = document.createElement('div')
-        name.className = 'font-medium'
+        name.className = 'font-medium text-sm text-primary'
         name.textContent = i.name
-        const sub = document.createElement('div')
-        sub.className = 'text-xs text-primary/70'
-        sub.textContent = 'x' + (i.qty || 1) + ' · ' + formatVND(i.priceK || 0)
-        txt.appendChild(name)
-        txt.appendChild(sub)
-        left.appendChild(txt)
-        const right = document.createElement('div')
-        right.className = 'text-sm'
-        right.textContent = formatVND((i.qty || 1) * (i.priceK || 0))
-        row.appendChild(left)
-        row.appendChild(right)
+        
+        const details = document.createElement('div')
+        details.className = 'text-xs text-primary/70'
+        details.textContent = 'x' + (i.qty || 1) + ' · ' + formatVND(i.priceK || 0)
+        
+        info.appendChild(name)
+        info.appendChild(details)
+        
+        // Price
+        const price = document.createElement('div')
+        price.className = 'flex-shrink-0 text-right'
+        const priceValue = document.createElement('div')
+        priceValue.className = 'font-semibold text-sm text-primary'
+        priceValue.textContent = formatVND((i.qty || 1) * (i.priceK || 0))
+        price.appendChild(priceValue)
+        
+        row.appendChild(imgWrapper)
+        row.appendChild(info)
+        row.appendChild(price)
         list.appendChild(row)
       })
+      
+      // Total
       document.getElementById('order-total').textContent = items.length ? formatVND(total / 1000) : ''
+      
+      // Render status badge in order-box (for search mode)
+      if (status && mode === 'search') {
+        const statusInfo = getStatusInfo(status)
+        const badge = document.getElementById('order-status-badge')
+        badge.classList.remove('hidden')
+        badge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ' + statusInfo.color
+        document.getElementById('status-icon').textContent = statusInfo.icon
+        document.getElementById('status-label').textContent = statusInfo.label
+      }
     }
 
     function setStatus(s) {
       const wait = document.getElementById('status-wait')
       const ok = document.getElementById('status-success')
       const fail = document.getElementById('status-fail')
+      const empty = document.getElementById('empty-state')
       const text = document.getElementById('status-text')
       const titleEl = document.getElementById('fail-title')
-      const descEl = document.getElementById('fail-desc')
+      const statusCard = document.getElementById('status-card')
+      const orderBox = document.getElementById('order-box')
+      
+      // Hide status card in search mode
+      if (mode === 'search') {
+        statusCard.classList.add('hidden')
+        return
+      }
+      
       wait.classList.add('hidden')
       ok.classList.add('hidden')
       fail.classList.add('hidden')
+      empty.classList.add('hidden')
+      statusCard.classList.remove('bg-green-50', 'bg-red-50')
+      
       if (s === 'completed') {
         ok.classList.remove('hidden')
-        document.getElementById('status-card').classList.add('bg-green-50')
-      } else if (s === 'failed' || s === 'canceled') {
+        wait.classList.add('hidden')
+        statusCard.classList.add('bg-green-50')
+      } else if (s === 'failed') {
         fail.classList.remove('hidden')
-        document.getElementById('status-card').classList.add('bg-red-50')
-        if (titleEl) titleEl.textContent = s === 'failed' ? 'Xác minh chuyển khoản thất bại' : 'Đơn đã bị hủy'
-        if (descEl) descEl.textContent = s === 'failed' ? 'Ảnh biên lai chưa hợp lệ. Vui lòng mở chat hoặc liên hệ quầy.' : 'Vui lòng mở chat hoặc gọi quầy để được hỗ trợ.'
+        statusCard.classList.add('bg-red-50')
+        if (titleEl) titleEl.textContent = 'Thất bại'
+      } else if (s === 'canceled') {
+        fail.classList.remove('hidden')
+        statusCard.classList.add('bg-red-50')
+        if (titleEl) titleEl.textContent = 'Huỷ'
+      } else if (s === 'not_found') {
+        empty.classList.remove('hidden')
+        statusCard.classList.add('hidden')
+        orderBox.classList.add('hidden')
+      } else if (s === 'error') {
+        fail.classList.remove('hidden')
+        statusCard.classList.add('bg-red-50')
+        if (titleEl) titleEl.textContent = 'Lỗi tải đơn hàng'
       } else {
         wait.classList.remove('hidden')
-        text.textContent = s === 'processing' ? 'Đang pha chế...' : (s === 'pending_transfer' ? 'Đang xác minh thanh toán...' : 'Đang chờ quầy xác nhận...')
+        const statusInfo = getStatusInfo(s)
+        text.textContent = statusInfo.label
       }
     }
 
     const statusCard = document.getElementById('status-card')
     const orderBox = document.getElementById('order-box')
+    const emptyState = document.getElementById('empty-state')
 
     if (mode === 'search' && !orderId) {
       statusCard.classList.add('hidden')
       orderBox.classList.add('hidden')
+      emptyState.classList.remove('hidden')
+      document.getElementById('empty-title').textContent = 'Tìm kiếm đơn hàng'
+      document.getElementById('empty-desc').textContent = 'Nhập mã đơn (ví dụ: BILL102) ở trên để tra cứu trạng thái'
     } else if (orderId && typeof firebase !== 'undefined') {
+      emptyState.classList.add('hidden')
       orderBox.classList.remove('hidden')
-      statusCard.classList.remove('hidden')
+      // Status card visibility depends on mode
+      if (mode === 'search') {
+        statusCard.classList.add('hidden')
+      } else {
+        statusCard.classList.remove('hidden')
+      }
       const db = window.bbDb || firebase.firestore()
       db.collection('orders').doc(orderId).onSnapshot(function (doc) {
         if (!doc.exists) {
-          setStatus('canceled')
+          setStatus('not_found')
           renderOrder({})
           return
         }
         const data = doc.data()
-        renderOrder(data)
         const status = data.status || 'unverified_cash'
+        renderOrder(data, status)
         setStatus(status)
       }, function (err) {
-        setStatus('canceled')
-        document.getElementById('fail-title').textContent = 'Không tải được đơn hàng'
-        document.getElementById('fail-desc').textContent = 'Kiểm tra kết nối mạng hoặc mã đơn.'
+        setStatus('error')
         renderOrder({})
       })
     } else if (!orderId) {
       statusCard.classList.add('hidden')
       orderBox.classList.add('hidden')
+      emptyState.classList.add('hidden')
     }
 
     const search = document.getElementById('search')
     const btnSearch = document.getElementById('btn-search')
+    let searchDebounce = null
+    
     function doSearch() {
       const v = search.value.trim()
       if (v) {
@@ -233,8 +413,36 @@
         location.href = 'tracking.html?' + qs
       }
     }
-    btnSearch.addEventListener('click', doSearch)
-    search.addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch() })
+    
+    function triggerSearch() {
+      if (searchDebounce) clearTimeout(searchDebounce)
+      btnSearch.disabled = true
+      const originalText = btnSearch.textContent
+      btnSearch.textContent = 'Đang tìm...'
+      searchDebounce = setTimeout(() => {
+        doSearch()
+        btnSearch.disabled = false
+        btnSearch.textContent = originalText
+      }, 300)
+    }
+    
+    btnSearch.addEventListener('click', triggerSearch)
+    search.addEventListener('keydown', function (e) { if (e.key === 'Enter') triggerSearch() })
+
+    // Copy order id button handler
+    document.getElementById('copy-order-btn').addEventListener('click', () => {
+      if (!orderId) return
+      navigator.clipboard.writeText(orderId).then(showCopyToast).catch(() => {
+        // fallback for older browsers
+        const ta = document.createElement('textarea')
+        ta.value = orderId
+        document.body.appendChild(ta)
+        ta.select()
+        try { document.execCommand('copy') } catch (e) {}
+        ta.remove()
+        showCopyToast()
+      })
+    })
   </script>
   <script src="chat.js?v=20260301-1" defer></script>
 </body>

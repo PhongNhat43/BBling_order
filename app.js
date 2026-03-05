@@ -34,7 +34,7 @@ function renderMenu() {
       <h3 class="font-serif italic text-lg mb-3">${cat.name}</h3>
       <div class="grid grid-cols-1 gap-3">
         ${cat.items.map(i => `
-          <div class="flex items-center justify-between rounded-xl bg-white/70 backdrop-blur px-4 py-4 shadow-soft border border-primary/10 hover:shadow-lg transition cursor-pointer" data-card="${i.id}">
+          <div class="flex items-center justify-between rounded-xl bg-white/70 backdrop-blur px-4 py-4 shadow-soft border border-primary/10 hover:shadow-lg hover:transition-shadow hover:duration-200 cursor-pointer menu-item" data-card="${i.id}">
             <div class="flex items-center gap-3 w-full">
               <img src="${i.img}" alt="" class="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
               <div class="flex-1">
@@ -42,7 +42,7 @@ function renderMenu() {
                 <div class="text-xs text-primary/70 border-t border-dashed border-primary/20 mt-1 pt-1">${i.priceK}k · ${formatVND(i.priceK)}</div>
               </div>
             </div>
-            <button data-id="${i.id}" class="add ml-3 px-3 py-2 rounded-lg bg-primary text-cream hover:shadow-lg active:scale-95 transition">+</button>
+            <button data-id="${i.id}" class="add ml-3 px-3 py-2 rounded-lg bg-primary text-cream hover:shadow-lg active:scale-95 transition-all duration-150">+</button>
           </div>
         `).join('')}
       </div>
@@ -79,8 +79,8 @@ const modalNote = document.getElementById('modal-note');
 const modalAdd = document.getElementById('modal-add');
 const modalClose = document.getElementById('modal-close');
 
-function lockScroll() { document.documentElement.classList.add('overflow-hidden'); document.body.classList.add('overflow-hidden'); }
-function unlockScroll() { document.documentElement.classList.remove('overflow-hidden'); document.body.classList.remove('overflow-hidden'); }
+function lockScroll() { document.body.style.overflow = 'hidden'; }
+function unlockScroll() { document.body.style.overflow = ''; }
 
 function updateModalAddText(priceK) {
   const total = Math.max(0, modalState.qty) * priceK;
@@ -99,12 +99,13 @@ function openProduct(id) {
   qtyVal.textContent = '1';
   modalNote.value = '';
   updateModalAddText(item.priceK);
-  modalEl.classList.remove('pointer-events-none');
   lockScroll();
-  requestAnimationFrame(() => {
+  modalEl.classList.remove('pointer-events-none');
+  // Use a small delay to ensure DOM is ready before animation
+  setTimeout(() => {
     modalEl.classList.add('opacity-100');
     modalSheet.classList.remove('translate-y-full');
-  });
+  }, 10);
 }
 
 function closeProduct() {
@@ -113,6 +114,8 @@ function closeProduct() {
   setTimeout(() => {
     modalEl.classList.add('pointer-events-none');
     unlockScroll();
+    // Reset modal state
+    modalState = { id: null, qty: 1, opts: new Set(), note: '' };
   }, 300);
 }
 
