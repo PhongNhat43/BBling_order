@@ -62,107 +62,112 @@
         </div>
       </div>
 
-      <div id="status-card" class="rounded-2xl bg-white shadow-soft mb-4 fade-in">
-        <div class="p-4">
-          <div id="status-wait" class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
-              <svg class="w-5 h-5 animate-spin text-accent" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
-            </div>
-            <div>
-              <div class="font-medium" id="status-text">Đang chờ xác nhận...</div>
-            </div>
-          </div>
-
-          <div id="status-success" class="hidden flex items-center gap-3">
-            <div class="flex items-center flex-nowrap">
-              <span class="w-7 h-7 rounded-full bg-success/10 flex items-center justify-center">
-                <svg class="w-5 h-5 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
-              </span>
-              <span class="font-medium text-primary ml-2 whitespace-nowrap">Hoàn thành</span>
-            </div>
-          </div>
-
-          <div id="status-fail" class="hidden flex items-center gap-3">
-            <div class="flex items-center flex-nowrap">
-              <span class="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center">
-                <svg class="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </span>
-              <span class="font-medium text-primary ml-2 whitespace-nowrap" id="fail-title">Lỗi</span>
-            </div>
-          </div>
+      <!-- Skeleton loader -->
+      <div id="skeleton" class="space-y-3 pb-32">
+        <div class="rounded-2xl bg-white shadow-soft p-5 animate-pulse">
+          <div class="h-5 bg-primary/10 rounded-lg w-2/3 mx-auto mb-3"></div>
+          <div class="h-12 bg-primary/8 rounded-xl w-full mb-2"></div>
+          <div class="h-3 bg-primary/6 rounded w-1/2 mx-auto"></div>
+        </div>
+        <div class="rounded-2xl bg-white shadow-soft p-5 animate-pulse space-y-3">
+          <div class="h-4 bg-primary/10 rounded w-1/3"></div>
+          <div class="flex gap-3"><div class="w-10 h-10 rounded-full bg-primary/10"></div><div class="flex-1 space-y-2"><div class="h-3 bg-primary/8 rounded w-3/4"></div><div class="h-3 bg-primary/6 rounded w-1/2"></div></div></div>
+          <div class="flex gap-3"><div class="w-10 h-10 rounded-full bg-primary/6"></div><div class="flex-1 space-y-2"><div class="h-3 bg-primary/8 rounded w-2/3"></div><div class="h-3 bg-primary/6 rounded w-1/3"></div></div></div>
+        </div>
+        <div class="rounded-2xl bg-white shadow-soft p-5 animate-pulse space-y-2">
+          <div class="h-4 bg-primary/10 rounded w-1/4 mb-3"></div>
+          <div class="h-3 bg-primary/8 rounded w-full"></div>
+          <div class="h-3 bg-primary/6 rounded w-2/3"></div>
         </div>
       </div>
 
-      <div id="order-box" class="rounded-3xl bg-white shadow-soft mb-4 fade-in">
-        <!-- Header -->
-        <div class="p-5 pb-4">
-          <div class="text-center mb-4">
-            <div class="font-serif italic text-xl text-primary mb-3">Chi tiết đơn hàng</div>
+      <!-- Main order content -->
+      <div id="order-box" class="hidden space-y-3 pb-32 fade-in">
+
+        <!-- Status Hero -->
+        <div id="status-hero" class="rounded-2xl p-5 text-center shadow-soft">
+          <div id="hero-icon" class="text-5xl mb-2">⏳</div>
+          <div id="hero-label" class="text-lg font-semibold">Chờ xác nhận</div>
+          <div id="hero-sub" class="text-sm opacity-70 mt-1">Đơn hàng đã ghi nhận, đang chờ xác minh</div>
+        </div>
+
+        <!-- Order meta -->
+        <div class="rounded-2xl bg-white shadow-soft px-5 py-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs text-primary/60 mb-0.5">Mã đơn hàng</div>
+              <div id="order-id" class="font-semibold text-primary"></div>
+            </div>
+            <button id="copy-order-btn" class="hidden p-2 rounded-lg hover:bg-cream active:scale-95 transition" aria-label="Sao chép mã đơn">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            </button>
           </div>
-          
-          <div class="flex flex-col items-center gap-3">
-            <!-- Order ID with Copy -->
-            <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-cream">
-              <div id="order-id" class="text-sm text-primary font-semibold">Mã đơn:</div>
-              <button id="copy-order-btn" class="hidden p-2 rounded-lg hover:bg-white/50 active:scale-95 transition-all" title="Sao chép mã đơn" aria-label="Copy">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-              </button>
-            </div>
-            
-            <!-- Status Badge -->
-            <div class="flex items-center gap-2">
-              <div id="order-status-badge" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border">
-                <span id="status-icon" class="text-base">⏳</span>
-                <span id="status-label">Chờ xác nhận</span>
-              </div>
-            </div>
-            
-            <!-- Payment Method -->
-            <div class="flex items-center gap-2 text-xs">
-              <span class="text-primary/60">Phương thức thanh toán:</span>
-              <div id="method-badge" class="px-2 py-1 rounded-lg bg-cream border border-primary/10 text-primary font-semibold"></div>
+          <div class="mt-3 pt-3 border-t border-primary/8 flex items-center justify-between">
+            <span class="text-xs text-primary/60">Phương thức thanh toán</span>
+            <div id="method-badge" class="px-2.5 py-1 rounded-lg bg-cream border border-primary/10 text-primary text-sm font-semibold"></div>
+          </div>
+          <!-- status badge for search mode -->
+          <div id="order-status-badge" class="hidden mt-3 pt-3 border-t border-primary/8 flex items-center justify-between">
+            <span class="text-xs text-primary/60">Trạng thái</span>
+            <div id="status-badge-inner" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border">
+              <span id="status-icon">⏳</span>
+              <span id="status-label">Chờ xác nhận</span>
             </div>
           </div>
         </div>
 
-        <!-- Customer Info Section -->
-        <div class="px-5 py-4 border-t border-primary/10">
-          <div class="text-sm font-semibold text-primary mb-3">Thông tin khách hàng</div>
-          <div class="space-y-2">
-            <div id="cust-name" class="text-sm font-semibold text-primary"></div>
+        <!-- Customer info -->
+        <div class="rounded-2xl bg-white shadow-soft px-5 py-4">
+          <div class="text-sm font-semibold mb-3">Thông tin khách hàng</div>
+          <div class="space-y-1.5">
+            <div id="cust-name" class="font-semibold text-sm text-primary"></div>
             <div id="cust-phone" class="text-xs text-primary/70"></div>
             <div id="cust-address" class="text-xs text-primary/70"></div>
-            <div id="cust-location" class="text-xs text-primary/60 italic"></div>
+            <div id="cust-location" class="text-xs text-primary/50 italic"></div>
           </div>
         </div>
 
-        <!-- Items List -->
-        <div class="px-5 py-4 border-t border-primary/10">
-          <div class="text-sm font-semibold text-primary mb-3">Sản phẩm đã đặt</div>
-          <div id="order-list" class="space-y-3 mb-4"></div>
-        </div>
-
-        <!-- Total Section -->
-        <div class="px-5 py-4 border-t border-primary/10">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold text-primary">Tổng cộng:</span>
+        <!-- Items + total -->
+        <div class="rounded-2xl bg-white shadow-soft px-5 py-4">
+          <div class="text-sm font-semibold mb-3">Sản phẩm đã đặt</div>
+          <div id="order-list" class="divide-y divide-primary/8"></div>
+          <div class="flex items-center justify-between pt-3 mt-1">
+            <span class="text-sm font-semibold">Tổng cộng</span>
             <span id="order-total" class="text-xl font-bold text-accent"></span>
           </div>
         </div>
+
+        <!-- Action buttons -->
+        <div class="rounded-2xl bg-white shadow-soft p-4">
+          <div class="flex gap-3">
+            <a href="tel:0985679565" class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-cream font-semibold text-sm min-h-[48px] hover:shadow-lg active:scale-95 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+              Gọi hotline
+            </a>
+            <button id="btn-chat-action" class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-white font-semibold text-sm min-h-[48px] hover:shadow-lg active:scale-95 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+              Nhắn tin hỗ trợ
+            </button>
+          </div>
+        </div>
+
+        <div class="text-center pb-2">
+          <a href="index.html" class="text-sm text-primary/60 underline underline-offset-4 hover:text-primary transition">← Quay lại đặt món</a>
+        </div>
       </div>
+
+      <!-- Empty / error state -->
       <div id="empty-state" class="hidden rounded-3xl bg-white shadow-soft text-center mb-4 fade-in">
         <div class="p-8">
           <div class="w-16 h-16 rounded-full bg-cream flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-primary/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="11" cy="11" r="8"/>
-              <path stroke-linecap="round" d="m21 21-4.35-4.35"/>
-            </svg>
+            <svg class="w-8 h-8 text-primary/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
           </div>
           <div class="font-serif italic text-lg text-primary mb-2" id="empty-title">Không tìm thấy đơn hàng</div>
           <div class="text-sm text-primary/60 mb-6 max-w-xs mx-auto" id="empty-desc">Vui lòng kiểm tra lại mã đơn của bạn</div>
           <button onclick="document.getElementById('search').focus()" class="px-5 py-2.5 text-sm font-semibold rounded-xl bg-primary text-white hover:shadow-lg active:scale-95 transition-all">Tìm lại</button>
         </div>
-      </div>    </div>
+      </div>
+    </div>
   </div>
 
   <button id="chat-toggle" class="fixed right-4 bottom-6 w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-soft hover:shadow-lg active:scale-95 transition-all">
@@ -221,171 +226,133 @@
       return statusMap[dbStatus] || { label: 'Chưa biết', icon: '?', color: 'bg-gray-50 text-gray-900 border-gray-200' }
     }
 
-    function imgEl(src) {
-      const im = document.createElement('img')
-      im.src = src || PLACEHOLDER_IMG
-      im.alt = ''
-      im.className = 'w-16 h-16 rounded-xl object-cover border border-primary/10'
-      im.onerror = () => { im.src = PLACEHOLDER_IMG }
-      return im
-    }
-
     function renderOrder(data, status) {
       const items = data?.items || []
       const customer = data?.customer || {}
       const method = data?.method || 'cash'
       const total = data?.totalK ? data.totalK * 1000 : items.reduce((s, i) => s + (i.qty || 0) * (i.priceK || 0) * 1000, 0)
-      
+
       // Order ID
       const orderIdEl = document.getElementById('order-id')
-      orderIdEl.textContent = orderId ? 'Mã đơn: #' + orderId : 'Mã đơn:'
-      orderIdEl.title = orderId ? '#' + orderId : ''
+      orderIdEl.textContent = orderId ? '#' + orderId : '—'
       const copyBtn = document.getElementById('copy-order-btn')
-      if (copyBtn) {
-        if (orderId) copyBtn.classList.remove('hidden')
-        else copyBtn.classList.add('hidden')
-      }
-      
+      if (copyBtn) { copyBtn.classList.toggle('hidden', !orderId) }
+
       // Payment Method Badge
-      const badge = document.getElementById('method-badge')
-      badge.textContent = method === 'transfer' ? 'Chuyển khoản' : 'Tiền mặt'
-      badge.className = 'px-2 py-1 rounded-lg bg-cream border border-primary/10 text-primary font-semibold'
-      
+      document.getElementById('method-badge').textContent = method === 'transfer' ? '🏦 Chuyển khoản' : '💵 Tiền mặt'
+
       // Customer Info
       document.getElementById('cust-name').textContent = customer.name || 'Chưa có thông tin'
-      document.getElementById('cust-phone').textContent = customer.phone ? 'Số điện thoại: ' + customer.phone : ''
-      document.getElementById('cust-address').textContent = customer.address ? 'Địa chỉ nhận hàng: ' + customer.address : ''
+      document.getElementById('cust-phone').textContent = customer.phone ? '📞 ' + customer.phone : ''
+      document.getElementById('cust-address').textContent = customer.address ? '📍 ' + customer.address : ''
       const loc = [customer.city, customer.district, customer.ward].filter(Boolean).join(' · ')
       document.getElementById('cust-location').textContent = loc || ''
-      
-      // Items List
+
+      // Items List — compact style
       const list = document.getElementById('order-list')
       list.innerHTML = ''
-      items.forEach(i => {
+      items.forEach(function(i) {
         const row = document.createElement('div')
-        row.className = 'flex items-center gap-3 py-2'
-        
-        // Image
-        const imgWrapper = document.createElement('div')
-        imgWrapper.className = 'flex-shrink-0'
-        imgWrapper.appendChild(imgEl(i.img))
-        
-        // Product Info
+        row.className = 'flex items-center gap-3 py-2.5'
+        const thumb = document.createElement('img')
+        thumb.src = i.img || PLACEHOLDER_IMG
+        thumb.alt = ''
+        thumb.className = 'w-10 h-10 rounded-lg object-cover border border-primary/10 flex-shrink-0'
+        thumb.onerror = function() { thumb.src = PLACEHOLDER_IMG }
         const info = document.createElement('div')
         info.className = 'flex-1 min-w-0'
-        
-        const name = document.createElement('div')
-        name.className = 'font-medium text-sm text-primary'
-        name.textContent = i.name
-        
-        const details = document.createElement('div')
-        details.className = 'text-xs text-primary/70'
-        details.textContent = 'x' + (i.qty || 1) + ' · ' + formatVND(i.priceK || 0)
-        
-        info.appendChild(name)
-        info.appendChild(details)
-        
-        // Price
-        const price = document.createElement('div')
-        price.className = 'flex-shrink-0 text-right'
-        const priceValue = document.createElement('div')
-        priceValue.className = 'font-semibold text-sm text-primary'
-        priceValue.textContent = formatVND((i.qty || 1) * (i.priceK || 0))
-        price.appendChild(priceValue)
-        
-        row.appendChild(imgWrapper)
+        info.innerHTML = '<div class="text-sm font-medium truncate">' + (i.qty || 1) + ' × ' + i.name + '</div>'
+        const pr = document.createElement('div')
+        pr.className = 'text-sm font-semibold text-accent flex-shrink-0'
+        pr.textContent = formatVND((i.qty || 1) * (i.priceK || 0))
+        row.appendChild(thumb)
         row.appendChild(info)
-        row.appendChild(price)
+        row.appendChild(pr)
         list.appendChild(row)
       })
-      
+
       // Total
-      document.getElementById('order-total').textContent = items.length ? formatVND(total / 1000) : ''
-      
-      // Render status badge in order-box (for search mode)
-      if (status && mode === 'search') {
-        const statusInfo = getStatusInfo(status)
-        const badge = document.getElementById('order-status-badge')
-        badge.classList.remove('hidden')
-        badge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ' + statusInfo.color
-        document.getElementById('status-icon').textContent = statusInfo.icon
-        document.getElementById('status-label').textContent = statusInfo.label
+      document.getElementById('order-total').textContent = total ? formatVND(total / 1000) : ''
+
+      // Status badge (search mode only)
+      if (status) {
+        const sInfo = getStatusInfo(status)
+        const badgeWrap = document.getElementById('order-status-badge')
+        const badgeInner = document.getElementById('status-badge-inner')
+        if (badgeWrap) {
+          badgeWrap.classList.toggle('hidden', mode !== 'search')
+          if (badgeInner) {
+            badgeInner.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ' + sInfo.color
+            document.getElementById('status-icon').textContent = sInfo.icon
+            document.getElementById('status-label').textContent = sInfo.label
+          }
+        }
       }
+
+      // Show order box, hide skeleton
+      document.getElementById('skeleton').classList.add('hidden')
+      document.getElementById('order-box').classList.remove('hidden')
     }
 
     function setStatus(s) {
-      const wait = document.getElementById('status-wait')
-      const ok = document.getElementById('status-success')
-      const fail = document.getElementById('status-fail')
-      const empty = document.getElementById('empty-state')
-      const text = document.getElementById('status-text')
-      const titleEl = document.getElementById('fail-title')
-      const statusCard = document.getElementById('status-card')
+      const skeleton = document.getElementById('skeleton')
       const orderBox = document.getElementById('order-box')
-      
-      // Hide status card in search mode
-      if (mode === 'search') {
-        statusCard.classList.add('hidden')
+      const emptyState = document.getElementById('empty-state')
+      const hero = document.getElementById('status-hero')
+      const heroIcon = document.getElementById('hero-icon')
+      const heroLabel = document.getElementById('hero-label')
+      const heroSub = document.getElementById('hero-sub')
+
+      const heroMap = {
+        'unverified_cash': { icon: '⏳', label: 'Chờ xác nhận', sub: 'Đơn đã ghi nhận, chờ xác minh thanh toán', bg: 'bg-amber-50' },
+        'pending_transfer': { icon: '🔄', label: 'Xác minh chuyển khoản', sub: 'Đang kiểm tra biên lai của bạn', bg: 'bg-amber-50' },
+        'processing':        { icon: '☕', label: 'Đang pha chế', sub: 'Nhân viên đang chuẩn bị đơn hàng của bạn', bg: 'bg-blue-50' },
+        'completed':         { icon: '✨', label: 'Hoàn thành', sub: 'Cảm ơn bạn đã ủng hộ B.BLING!', bg: 'bg-green-50' },
+        'failed':            { icon: '❌', label: 'Thất bại', sub: 'Có lỗi xảy ra. Liên hệ hotline để được hỗ trợ.', bg: 'bg-red-50' },
+        'canceled':          { icon: '⛔', label: 'Đơn bị huỷ', sub: 'Đơn hàng đã bị huỷ. Liên hệ chúng tôi nếu đây là nhầm lẫn.', bg: 'bg-gray-50' },
+        'not_found':         { icon: '🔍', label: 'Không tìm thấy', sub: 'Kiểm tra lại mã đơn của bạn', bg: 'bg-cream' },
+        'error':             { icon: '⚠️', label: 'Lỗi tải dữ liệu', sub: 'Kiểm tra kết nối mạng và thử lại', bg: 'bg-red-50' }
+      }
+
+      if (s === 'not_found' || s === 'error') {
+        skeleton.classList.add('hidden')
+        orderBox.classList.add('hidden')
+        emptyState.classList.remove('hidden')
+        const h = heroMap[s]
+        document.getElementById('empty-title').textContent = h.label
+        document.getElementById('empty-desc').textContent = h.sub
         return
       }
-      
-      wait.classList.add('hidden')
-      ok.classList.add('hidden')
-      fail.classList.add('hidden')
-      empty.classList.add('hidden')
-      statusCard.classList.remove('bg-green-50', 'bg-red-50')
-      
-      if (s === 'completed') {
-        ok.classList.remove('hidden')
-        wait.classList.add('hidden')
-        statusCard.classList.add('bg-green-50')
-      } else if (s === 'failed') {
-        fail.classList.remove('hidden')
-        statusCard.classList.add('bg-red-50')
-        if (titleEl) titleEl.textContent = 'Thất bại'
-      } else if (s === 'canceled') {
-        fail.classList.remove('hidden')
-        statusCard.classList.add('bg-red-50')
-        if (titleEl) titleEl.textContent = 'Huỷ'
-      } else if (s === 'not_found') {
-        empty.classList.remove('hidden')
-        statusCard.classList.add('hidden')
-        orderBox.classList.add('hidden')
-      } else if (s === 'error') {
-        fail.classList.remove('hidden')
-        statusCard.classList.add('bg-red-50')
-        if (titleEl) titleEl.textContent = 'Lỗi tải đơn hàng'
-      } else {
-        wait.classList.remove('hidden')
-        const statusInfo = getStatusInfo(s)
-        text.textContent = statusInfo.label
+
+      // Update status hero
+      const h = heroMap[s] || { icon: '?', label: 'Không xác định', sub: '', bg: 'bg-white' }
+      if (hero) {
+        hero.className = 'rounded-2xl p-5 text-center shadow-soft ' + h.bg
+        heroIcon.textContent = h.icon
+        heroLabel.textContent = h.label
+        heroSub.textContent = h.sub
       }
+
     }
 
-    const statusCard = document.getElementById('status-card')
+    const skeleton = document.getElementById('skeleton')
     const orderBox = document.getElementById('order-box')
     const emptyState = document.getElementById('empty-state')
 
     if (mode === 'search' && !orderId) {
-      statusCard.classList.add('hidden')
+      skeleton.classList.add('hidden')
       orderBox.classList.add('hidden')
       emptyState.classList.remove('hidden')
       document.getElementById('empty-title').textContent = 'Tìm kiếm đơn hàng'
-      document.getElementById('empty-desc').textContent = 'Nhập mã đơn (ví dụ: BILL102) ở trên để tra cứu trạng thái'
+      document.getElementById('empty-desc').textContent = 'Nhập mã đơn (ví dụ: BILL102) phía trên để tra cứu trạng thái'
     } else if (orderId && typeof firebase !== 'undefined') {
+      skeleton.classList.remove('hidden')
+      orderBox.classList.add('hidden')
       emptyState.classList.add('hidden')
-      orderBox.classList.remove('hidden')
-      // Status card visibility depends on mode
-      if (mode === 'search') {
-        statusCard.classList.add('hidden')
-      } else {
-        statusCard.classList.remove('hidden')
-      }
       const db = window.bbDb || firebase.firestore()
       db.collection('orders').doc(orderId).onSnapshot(function (doc) {
         if (!doc.exists) {
           setStatus('not_found')
-          renderOrder({})
           return
         }
         const data = doc.data()
@@ -394,10 +361,11 @@
         setStatus(status)
       }, function (err) {
         setStatus('error')
-        renderOrder({})
+        document.getElementById('skeleton').classList.add('hidden')
+        document.getElementById('empty-state').classList.remove('hidden')
       })
     } else if (!orderId) {
-      statusCard.classList.add('hidden')
+      skeleton.classList.add('hidden')
       orderBox.classList.add('hidden')
       emptyState.classList.add('hidden')
     }
@@ -433,7 +401,6 @@
     document.getElementById('copy-order-btn').addEventListener('click', () => {
       if (!orderId) return
       navigator.clipboard.writeText(orderId).then(showCopyToast).catch(() => {
-        // fallback for older browsers
         const ta = document.createElement('textarea')
         ta.value = orderId
         document.body.appendChild(ta)
@@ -443,6 +410,15 @@
         showCopyToast()
       })
     })
+
+    // Chat action button
+    var btnChatAction = document.getElementById('btn-chat-action')
+    if (btnChatAction) {
+      btnChatAction.addEventListener('click', function() {
+        var toggle = document.getElementById('chat-toggle')
+        if (toggle) toggle.click()
+      })
+    }
 
     // ── Telegram: gửi một lần khi đơn hàng mới được tạo ───────────────────
     var TELEGRAM_BOT_TOKEN = '8260261042:AAEoLsdM72n9baHidYkALvR6ynnGNuMOcC4';
