@@ -1,6 +1,7 @@
 'use strict';
 
 (function () {
+  console.log('[CHAT] chat.js starting initialization');
   const VERSION = '2026.03.01-1';
   const SELECTORS = {
     toggle: 'chat-toggle',
@@ -29,21 +30,51 @@
   }
 
   function rebuildUI() {
-    const oldToggle = document.getElementById(SELECTORS.toggle);
-    const oldPanel = document.getElementById(SELECTORS.panel);
-    if (oldToggle && oldToggle.parentElement) oldToggle.parentElement.removeChild(oldToggle);
-    if (oldPanel && oldPanel.parentElement) oldPanel.parentElement.removeChild(oldPanel);
-    const toggle = document.createElement('button');
-    toggle.id = SELECTORS.toggle;
-    toggle.className = 'fixed right-6 bottom-6 z-50 w-14 h-14 rounded-full bg-accent text-white flex items-center justify-center shadow-soft hover:shadow-lg transition relative';
-    toggle.innerHTML = '<span class="absolute inset-0 rounded-full"><span class="animate-ping absolute inset-0 rounded-full bg-accent opacity-30"></span></span><svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 relative" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5m-1 6l3-3h3a4 4 0 004-4V7a4 4 0 00-4-4H7a4 4 0 00-4 4v6a4 4 0 004 4h4z"/></svg>';
-    toggle.style.position = 'fixed';
-    toggle.style.right = '24px';
-    toggle.style.bottom = '24px';
-    toggle.style.zIndex = '9999';
-    toggle.style.width = '56px';
-    toggle.style.height = '56px';
-    const panel = document.createElement('div');
+    console.log('[CHAT] rebuildUI() called');
+    // ── Toggle button: KEEP existing one if present (preserves drag listeners & position) ──
+    let toggle = document.getElementById(SELECTORS.toggle);
+    console.log('[CHAT] Toggle button status - exists:', !!toggle);
+    if (!toggle) {
+      console.log('[CHAT] Creating new toggle button');
+      toggle = document.createElement('button');
+      toggle.id = SELECTORS.toggle;
+      toggle.className = 'fixed z-50 w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-soft transition-shadow relative';
+      toggle.innerHTML = '<span class="absolute inset-0 rounded-full"><span class="animate-ping absolute inset-0 rounded-full bg-accent opacity-30"></span></span><svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 relative" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5m-1 6l3-3h3a4 4 0 004-4V7a4 4 0 00-4-4H7a4 4 0 00-4 4v6a4 4 0 004 4h4z"/></svg>';
+      toggle.style.position = 'fixed';
+      toggle.style.zIndex = '9999';
+      // Try to restore saved position from localStorage, otherwise use defaults
+      let savedPos = null;
+      try {
+        var saved = localStorage.getItem('bb_chat_btn_pos');
+        console.log('[CHAT] Checking localStorage - saved:', saved);
+        if (saved) savedPos = JSON.parse(saved);
+      } catch(e) {
+        console.error('[CHAT] localStorage read error:', e);
+      }
+      if (savedPos) {
+        console.log('[CHAT] Restoring saved position:', savedPos);
+        toggle.style.left = savedPos.left + 'px';
+        toggle.style.top = savedPos.top + 'px';
+        toggle.style.right = 'auto';
+        toggle.style.bottom = 'auto';
+      } else {
+        console.log('[CHAT] Using default position: right=16px, bottom=24px');
+        toggle.style.right = '16px';
+        toggle.style.bottom = '24px';
+      }
+      document.body.appendChild(toggle);
+    } else {
+      console.log('[CHAT] Toggle already exists, keeping it unchanged. Current style:', {
+        left: toggle.style.left,
+        top: toggle.style.top,
+        right: toggle.style.right,
+        bottom: toggle.style.bottom
+      });
+    }
+    // ── Chat panel: recreate only if missing ──
+    let panel = document.getElementById(SELECTORS.panel);
+    if (panel && panel.parentElement) panel.parentElement.removeChild(panel);
+    panel = document.createElement('div');
     panel.id = SELECTORS.panel;
     panel.className = 'hidden fixed right-6 bottom-28 w-[92%] max-w-[460px] rounded-2xl bg-white/95 backdrop-blur shadow-soft p-4 ring-1 ring-primary/10 z-50';
     panel.innerHTML = '<div class="flex items-center justify-between mb-3 border-b border-primary/10 pb-2"><div class="flex items-center gap-3"><img id="chat-avatar" alt="B.BLING" class="w-9 h-9 rounded-full object-cover border border-primary/10" src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=96&q=60"/><div><div class="font-semibold text-sm">Hỗ trợ B.BLING</div><div class="text-[10px] text-success flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-success"></span>Đang trực tuyến</div></div></div><button id="chat-close" class="text-primary/60 text-xl leading-none hover:shadow-lg active:scale-95 transition">&times;</button></div><div id="chat-log" class="h-72 overflow-y-auto space-y-2 text-sm p-2 bg-cream rounded-xl"></div><div class="mt-3 flex items-center gap-2"><input id="chat-input" class="flex-1 rounded-xl border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/><button id="chat-upload-btn" type="button" class="w-11 h-11 rounded-xl bg-primary text-cream flex items-center justify-center hover:shadow-lg transition" aria-label="Tải ảnh"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"w-5 h-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 7h4l2-3h6l2 3h4v12H3V7z\"/><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 17a4 4 0 100-8 4 4 0 000 8z\"/></svg></button><input id=\"chat-upload\" type=\"file\" accept=\"image/*\" class=\"hidden\"/><button id=\"chat-send\" type=\"button\" class=\"px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm hover:shadow-lg transition\">Gửi</button></div>';
@@ -53,7 +84,6 @@
     panel.style.zIndex = '9999';
     panel.style.maxWidth = '460px';
     panel.style.width = '92%';
-    document.body.appendChild(toggle);
     document.body.appendChild(panel);
   }
 
@@ -83,14 +113,14 @@
       this.useFirebase = !!(window.bbDb);
       this.bindEvents();
       if (this.useFirebase) this.setupFirebaseChat();
-      console.log('[B.BLING Chat] Initialized VERSION:', VERSION, 
+      console.log('[B.BLING Chat] Initialized VERSION:', VERSION,
         this.useFirebase ? (this.isGuestMode ? '(Firebase Guest)' : '(Firebase Order)') : '(Local)');
       // auto open from index?chat=open or session flag
       const sp = new URLSearchParams(location.search);
       const auto = sp.get('chat') === 'open' || (sessionStorage.getItem('open_chat') === '1');
       if (auto) {
         this.openOrToggle();
-        try { sessionStorage.removeItem('open_chat'); } catch(_) {}
+        try { sessionStorage.removeItem('open_chat'); } catch (_) { }
         this.pushSupportCard();
       }
     }
@@ -124,12 +154,12 @@
       let sid = null;
       try {
         sid = localStorage.getItem(STORAGE_KEY);
-      } catch(e) {}
+      } catch (e) { }
       if (!sid) {
         sid = 'GUEST_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         try {
           localStorage.setItem(STORAGE_KEY, sid);
-        } catch(e) {}
+        } catch (e) { }
       }
       return sid;
     }
@@ -138,14 +168,14 @@
       const db = window.bbDb;
       const collectionPath = this.isGuestMode ? 'guestChats' : 'orders';
       const docId = this.isGuestMode ? this.sessionId : this.orderId;
-      
+
       // Cleanup previous listener and reset dedup set
       if (this.messagesUnsub) {
         this.messagesUnsub();
         this.messagesUnsub = null;
       }
       this._renderedMsgIds = new Set(); // always fresh on re-init
-      
+
       // Initialize guest chat document if needed
       if (this.isGuestMode) {
         db.collection('guestChats').doc(docId).set({
@@ -154,26 +184,26 @@
           sessionId: docId
         }, { merge: true }).catch(e => console.warn('Init guest chat failed:', e));
       }
-      
+
       this.messagesUnsub = db.collection(collectionPath).doc(docId).collection('messages').orderBy('createdAt').onSnapshot((snap) => {
         snap.docChanges().forEach((ch) => {
           if (ch.type !== 'added') return;
-          
+
           const d = ch.doc.data();
-          
+
           // Deduplicate by Firestore doc ID
           if (this._renderedMsgIds.has(ch.doc.id)) return;
-          
+
           const msgTime = d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : 0;
-          
+
           // Skip messages from before this session started (history)
           if (msgTime > 0 && msgTime < this.lastProcessedTime) return;
-          
+
           // Only render admin messages — customer messages are rendered locally in sendText()
           if (d.from !== 'admin') return;
-          
+
           this._renderedMsgIds.add(ch.doc.id);
-          
+
           if (d.type === 'image') {
             const wrap = document.createElement('div');
             wrap.className = 'max-w-[80%] mr-auto';
@@ -240,7 +270,7 @@
       slideIn(wrap);
       this.autoScroll();
     }
-    
+
     pushSupportCard() {
       const wrap = el('div', 'max-w-[90%] mr-auto');
       const card = el('div', 'bg-white px-3 py-2 rounded-2xl border border-primary/10 shadow-soft');
@@ -250,7 +280,7 @@
       btn.addEventListener('click', () => {
         navigator.clipboard.writeText('0985679565');
         btn.textContent = 'Đã sao chép';
-        setTimeout(()=>btn.textContent='Copy số 0985.679.565', 1200);
+        setTimeout(() => btn.textContent = 'Copy số 0985.679.565', 1200);
       });
       card.appendChild(line1);
       card.appendChild(line2);
@@ -269,24 +299,24 @@
       if (this._sending) return;
       this._sending = true;
       setTimeout(() => { this._sending = false; }, 600);
-      
+
       // Always render customer message locally first (prevent double-render from snapshot)
       const node = document.createTextNode(text);
       const { status } = this.pushUserBubble(node, 'Đang gửi...');
       console.debug('[Chat] sendText local render:', text, '| useFirebase:', this.useFirebase);
-      
+
       if (this.useFirebase) {
         const collectionPath = this.isGuestMode ? 'guestChats' : 'orders';
         const docId = this.isGuestMode ? this.sessionId : this.orderId;
         const db = window.bbDb;
-        
+
         // Update lastMessageAt for guest chats (ensure doc exists first)
         if (this.isGuestMode) {
           db.collection('guestChats').doc(docId).set({
             lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true }).catch(() => {});
+          }, { merge: true }).catch(() => { });
         }
-        
+
         db.collection(collectionPath).doc(docId).collection('messages').add({
           from: 'customer', type: 'text', content: text,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -298,7 +328,7 @@
         });
         return;
       }
-      
+
       // Fallback for non-Firebase mode
       setTimeout(() => {
         status.textContent = 'Đã gửi';
@@ -315,22 +345,22 @@
         img.src = reader.result;
         img.className = 'max-h-32 rounded-md';
         img.addEventListener('error', () => img.removeAttribute('srcset'), { once: true });
-        
+
         // Always render customer image locally first
         const { status } = this.pushUserBubble(img.cloneNode(), 'Đang gửi...');
-        
+
         if (this.useFirebase) {
           const collectionPath = this.isGuestMode ? 'guestChats' : 'orders';
           const docId = this.isGuestMode ? this.sessionId : this.orderId;
           const db = window.bbDb;
-          
+
           // Update lastMessageAt for guest chats
           if (this.isGuestMode) {
             db.collection('guestChats').doc(docId).update({
               lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).catch(() => {});
+            }).catch(() => { });
           }
-          
+
           db.collection(collectionPath).doc(docId).collection('messages').add({
             from: 'customer', type: 'image', content: reader.result,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -353,6 +383,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    console.log('[CHAT] DOMContentLoaded fired, initializing ChatManager');
     // Singleton guard — prevent double-init if script somehow loads twice
     if (window.__bbChatInit) return;
     window.__bbChatInit = true;

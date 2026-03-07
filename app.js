@@ -319,17 +319,28 @@ window.addEventListener('bb-menu-updated', function () { renderMenu(); });
 
   var dragging = false, moved = false;
   var ox, oy, bx, by;
+  const STORAGE_KEY = 'bb_chat_btn_pos';
+
+  function clampPos(left, top) {
+    var W = window.innerWidth, H = window.innerHeight;
+    var bw = btn.offsetWidth || 48, bh = btn.offsetHeight || 48;
+    return {
+      left: Math.max(8, Math.min(W - bw - 8, Number(left) || 8)),
+      top: Math.max(8, Math.min(H - bh - 8, Number(top) || 8))
+    };
+  }
 
   function pointerStart(cx, cy) {
     // Always read live rendered position — never trust btn.style.left/top
     var r = btn.getBoundingClientRect();
     bx = r.left;
     by = r.top;
+    console.log('[DRAG] pointerStart - screen position:', { left: bx, top: by });
     // Lock position to left/top so future style writes work
     btn.style.position = 'fixed';
-    btn.style.left   = bx + 'px';
-    btn.style.top    = by + 'px';
-    btn.style.right  = 'auto';
+    btn.style.left = bx + 'px';
+    btn.style.top = by + 'px';
+    btn.style.right = 'auto';
     btn.style.bottom = 'auto';
     ox = cx; oy = cy;
     dragging = true; moved = false;
@@ -344,7 +355,7 @@ window.addEventListener('bb-menu-updated', function () { renderMenu(); });
     var W = window.innerWidth, H = window.innerHeight;
     var bw = btn.offsetWidth, bh = btn.offsetHeight;
     btn.style.left = Math.max(8, Math.min(W - bw - 8, bx + dx)) + 'px';
-    btn.style.top  = Math.max(8, Math.min(H - bh - 8, by + dy)) + 'px';
+    btn.style.top = Math.max(8, Math.min(H - bh - 8, by + dy)) + 'px';
     btn.dataset.dragged = '1';
   }
 
@@ -352,12 +363,53 @@ window.addEventListener('bb-menu-updated', function () { renderMenu(); });
     if (!dragging) return;
     dragging = false;
     btn.style.transition = 'left 0.2s, top 0.2s, box-shadow 0.2s';
-    if (!moved) return;
-    // Snap to nearest horizontal edge
-    var W = window.innerWidth, bw = btn.offsetWidth;
-    var cur = parseFloat(btn.style.left) + bw / 2;
-    btn.style.left = (cur < W / 2 ? 8 : W - bw - 8) + 'px';
+    if (!moved) {
+      console.log('[DRAG] pointerEnd - skipped save (not moved)');
+      return;
+    }
+    // Keep exact dropped position (no snap-to-edge) and clamp to viewport
+    var rawLeft = parseFloat(btn.style.left) || 8;
+    var rawTop = parseFloat(btn.style.top) || 120;
+    var final = clampPos(rawLeft, rawTop);
+    var finalLeft = final.left;
+    var finalTop = final.top;
+    btn.style.left = finalLeft + 'px';
+    btn.style.top = finalTop + 'px';
+    // Save position to localStorage for persistence
+    console.log('[DRAG] pointerEnd - saving position:', { left: finalLeft, top: finalTop });
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: finalLeft, top: finalTop }));
+      console.log('[DRAG] Position saved to localStorage');
+    } catch(e) {
+      console.error('[DRAG] localStorage save error:', e);
+    }
   }
+
+  // Restore saved position on page load
+  function restoreSavedPosition() {
+    try {
+      var saved = localStorage.getItem(STORAGE_KEY);
+      console.log('[DRAG] restoreSavedPosition - saved data:', saved);
+      if (saved) {
+        var pos = JSON.parse(saved);
+        var safe = clampPos(pos.left, pos.top);
+        btn.style.position = 'fixed';
+        btn.style.left = safe.left + 'px';
+        btn.style.top = safe.top + 'px';
+        btn.style.right = 'auto';
+        btn.style.bottom = 'auto';
+        console.log('[DRAG] Restored position:', safe);
+      } else {
+        console.log('[DRAG] No saved position in localStorage, using defaults');
+      }
+    } catch(e) {
+      console.error('[DRAG] restoreSavedPosition error:', e);
+    }
+  }
+
+  // Restore on init
+  console.log('[DRAG] App.js drag setup started for button:', btn.id);
+  restoreSavedPosition();
 
   // Mouse
   btn.addEventListener('mousedown', function (e) {
