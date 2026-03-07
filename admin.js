@@ -178,11 +178,12 @@ const AdminState = (() => {
     if (!useFirebase) return;
     db.collection('guestChats').orderBy('lastMessageAt', 'desc').onSnapshot(function (snap) {
       guestChats = snap.docs.map(function (doc) {
-        const d = doc.data();
+        const d = doc.data() || {};
         const ts = d.lastMessageAt && (d.lastMessageAt.toMillis ? d.lastMessageAt.toMillis() : d.lastMessageAt) || Date.now();
-        return { 
-          id: doc.id, 
+        return {
+          id: doc.id,
           sessionId: d.sessionId || doc.id,
+          guestLabel: d.guestLabel || ('Khach ' + String(doc.id).slice(-6).toUpperCase()),
           createdAt: d.createdAt && (d.createdAt.toMillis ? d.createdAt.toMillis() : d.createdAt) || ts,
           lastMessageAt: ts,
           viewedByAdmin: d.viewedByAdmin || false,
@@ -545,7 +546,7 @@ const AdminState = (() => {
       const guest = guestChats.find(g => g.id === selectedId);
       if (guest) {
         headerAvatar.textContent = '👤';
-        headerName.textContent = 'Khách chat trực tiếp';
+        headerName.textContent = guest.guestLabel || 'Khach chat';
         const startTs = guest.createdAt || guest.lastMessageAt;
         const startLabel = startTs
           ? 'Bắt đầu: ' + new Date(startTs).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -572,23 +573,27 @@ const AdminState = (() => {
       if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
       
       if (useFirebase && selectedId) {
-        const collectionPath = selectedType === 'guest' ? 'guestChats' : 'orders';
+        const activeSelectedId = selectedId;
+        const activeSelectedType = selectedType;
+        const collectionPath = activeSelectedType === 'guest' ? 'guestChats' : 'orders';
         chat.innerHTML = '';
         let _lastRenderedDate = null; // tracks day for separator chips
         
         // Ensure document exists before setting up listener (critical for guest chats)
-        db.collection(collectionPath).doc(selectedId).get().then(function(docSnap) {
-          if (!docSnap.exists && selectedType === 'guest') {
+        db.collection(collectionPath).doc(activeSelectedId).get().then(function(docSnap) {
+          if (!docSnap.exists && activeSelectedType === 'guest') {
             // Create guest chat doc if missing (race condition: customer opened widget but hasn't sent message yet)
-            return db.collection('guestChats').doc(selectedId).set({
+            return db.collection('guestChats').doc(activeSelectedId).set({
               createdAt: firebase.firestore.FieldValue.serverTimestamp(),
               lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
-              sessionId: selectedId
+              sessionId: activeSelectedId
             }).then(() => docSnap);
           }
           return docSnap;
         }).then(function() {
-          messagesUnsub = db.collection(collectionPath).doc(selectedId).collection('messages').orderBy('createdAt').onSnapshot(function (snap) {
+          // Ignore stale async callback when user has already switched to another thread.
+          if (selectedId !== activeSelectedId || selectedType !== activeSelectedType) return;
+          messagesUnsub = db.collection(collectionPath).doc(activeSelectedId).collection('messages').orderBy('createdAt').onSnapshot(function (snap) {
           snap.docChanges().forEach(function (change) {
             if (change.type === 'added') {
               // Deduplicate by data-msg-id — prevents double render if snapshot re-fires
@@ -723,7 +728,7 @@ const AdminState = (() => {
       
       const nameRow = el('div','flex items-center justify-between gap-1 w-full');
       const nameLeft = el('div','flex items-center gap-1.5 min-w-0');
-      nameLeft.appendChild(el('span','text-sm font-medium text-gray-200 truncate','Khách chat'));
+      nameLeft.appendChild(el('span','text-sm font-medium text-gray-200 truncate', g.guestLabel || 'Khach chat'));
       if (isNew) {
         nameLeft.appendChild(el('span','px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent text-white shrink-0 animate-pulse-subtle','MỚI'));
       }
@@ -901,9 +906,9 @@ const AdminState = (() => {
         }).then(() => {
           // Update lastMessageAt for guest chats
           if (selectedType === 'guest') {
-            db.collection('guestChats').doc(selectedId).update({
+            db.collection('guestChats').doc(selectedId).set({
               lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).catch(() => {});
+            }, { merge: true }).catch(() => {});
           }
         }).catch(function(){ Toast.error('❌ Gửi tin nhắn thất bại'); });
       } else {
@@ -923,9 +928,9 @@ const AdminState = (() => {
           }).then(() => {
             // Update lastMessageAt for guest chats
             if (selectedType === 'guest') {
-              db.collection('guestChats').doc(selectedId).update({
+              db.collection('guestChats').doc(selectedId).set({
                 lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
-              }).catch(() => {});
+              }, { merge: true }).catch(() => {});
             }
           }).catch(function(){ Toast.error('❌ Gửi ảnh thất bại'); });
         } else {
@@ -951,9 +956,9 @@ const AdminState = (() => {
         }).then(() => {
           // Update lastMessageAt for guest chats
           if (selectedType === 'guest') {
-            db.collection('guestChats').doc(selectedId).update({
+            db.collection('guestChats').doc(selectedId).set({
               lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).catch(() => {});
+            }, { merge: true }).catch(() => {});
           }
         }).catch(function(){ alert('Gửi thất bại.'); });
       } else {

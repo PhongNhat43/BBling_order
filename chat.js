@@ -155,7 +155,8 @@
       try {
         sid = localStorage.getItem(STORAGE_KEY);
       } catch (e) { }
-      if (!sid) {
+      // Migrate old shared-room mode to per-device stable session.
+      if (!sid || sid === 'GUEST_SUPPORT_ROOM') {
         sid = 'GUEST_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         try {
           localStorage.setItem(STORAGE_KEY, sid);
@@ -178,10 +179,12 @@
 
       // Initialize guest chat document if needed
       if (this.isGuestMode) {
+        const guestLabel = 'Khach ' + docId.slice(-6).toUpperCase();
         db.collection('guestChats').doc(docId).set({
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
-          sessionId: docId
+          sessionId: docId,
+          guestLabel: guestLabel
         }, { merge: true }).catch(e => console.warn('Init guest chat failed:', e));
       }
 
