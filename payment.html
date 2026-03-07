@@ -1,10 +1,13 @@
 <!doctype html>
 <html lang="vi">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Thanh toán | B.BLING</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap"
+    rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
@@ -17,58 +20,94 @@
       theme: {
         extend: {
           colors: { primary: '#3E2723', cream: '#F2E8DF', accent: '#C2410C', success: '#16A34A' },
-          fontFamily: { serif: ['Playfair Display','serif'], sans: ['Montserrat','sans-serif'] }
+          fontFamily: { serif: ['Playfair Display', 'serif'], sans: ['Montserrat', 'sans-serif'] }
         }
       }
     }
   </script>
   <style>
-    html, body { height: 100%; }
-    .paper {
-      background: radial-gradient(1000px 700px at 20% 10%, rgba(0,0,0,0.05), transparent 60%),
-                  radial-gradient(800px 600px at 80% 20%, rgba(0,0,0,0.04), transparent 60%),
-                  linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02));
+    html,
+    body {
+      height: 100%;
     }
-    .shadow-soft{ box-shadow: 0 6px 20px rgba(62,39,35,.12); }
+
+    .paper {
+      background: radial-gradient(1000px 700px at 20% 10%, rgba(0, 0, 0, 0.05), transparent 60%),
+        radial-gradient(800px 600px at 80% 20%, rgba(0, 0, 0, 0.04), transparent 60%),
+        linear-gradient(0deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.02));
+    }
+
+    .shadow-soft {
+      box-shadow: 0 6px 20px rgba(62, 39, 35, .12);
+    }
+
     /* Leaflet z-index fix */
-    #location-map { z-index: 0; }
-    .leaflet-pane, .leaflet-control { z-index: 1 !important; }
-    .leaflet-top, .leaflet-bottom { z-index: 2 !important; }
+    #location-map {
+      z-index: 0;
+    }
+
+    .leaflet-pane,
+    .leaflet-control {
+      z-index: 1 !important;
+    }
+
+    .leaflet-top,
+    .leaflet-bottom {
+      z-index: 2 !important;
+    }
   </style>
 </head>
+
 <body class="min-h-full bg-cream text-primary font-sans paper">
   <div class="min-h-screen flex items-start justify-center p-4 pt-8">
     <div class="w-full max-w-md bg-white rounded-3xl shadow-soft p-5">
       <div class="text-center mb-4">
-        <a href="index.html" class="font-sans text-xl font-semibold mb-1 block text-primary hover:underline">B.BLING Coffee & Eatery</a>
+        <a href="index.html" class="font-sans text-xl font-semibold mb-1 block text-primary hover:underline">B.BLING
+          Coffee & Eatery</a>
         <div class="text-xs text-primary/70">Thanh toán đơn hàng</div>
       </div>
 
       <div class="space-y-3 mb-4">
         <div class="flex items-center justify-between rounded-xl bg-cream px-3 py-2">
-          <div class="text-sm"><span class="opacity-80">Mã đơn:</span> <span id="bill" class="font-semibold">#BILL102</span></div>
+          <div class="text-sm"><span class="opacity-80">Mã đơn:</span> <span id="bill"
+              class="font-semibold">#BILL102</span></div>
           <button id="copy-bill" class="p-2 rounded-lg active:scale-95" aria-label="Copy">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8M8 11h8M8 15h5"/><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8M8 11h8M8 15h5" />
+              <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+            </svg>
           </button>
         </div>
         <div class="flex items-center justify-between rounded-xl bg-cream px-3 py-2">
           <div>
-            <div class="text-sm"><span class="opacity-80">Số tiền:</span> <span id="amount" class="font-semibold">78.000đ</span></div>
+            <div class="text-sm"><span class="opacity-80">Số tiền:</span> <span id="amount"
+                class="font-semibold">78.000đ</span></div>
             <div id="amount-words" class="text-[11px] text-primary/45 italic mt-0.5"></div>
           </div>
           <button id="copy-amount" class="p-2 rounded-lg active:scale-95" aria-label="Copy">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8M8 11h8M8 15h5"/><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8M8 11h8M8 15h5" />
+              <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+            </svg>
           </button>
         </div>
       </div>
 
       <!-- Order summary accordion -->
       <div class="mb-4 rounded-xl border border-primary/10 overflow-hidden">
-        <button id="order-summary-toggle" class="w-full flex items-center justify-between px-3 py-3 bg-cream/60 hover:bg-cream transition text-sm" type="button">
+        <button id="order-summary-toggle"
+          class="w-full flex items-center justify-between px-3 py-3 bg-cream/60 hover:bg-cream transition text-sm"
+          type="button">
           <span class="font-semibold">Đơn hàng: <span id="summary-count"></span></span>
           <div class="flex items-center gap-2">
             <span class="font-semibold text-accent" id="summary-total"></span>
-            <svg id="summary-chevron" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-primary/50 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <svg id="summary-chevron" xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 text-primary/50 transition-transform duration-200" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
         </button>
         <div id="order-summary-body" class="divide-y divide-primary/10 bg-white hidden">
@@ -80,35 +119,56 @@
         <div>
           <div class="text-sm mb-2 font-semibold">Thông tin khách hàng</div>
           <div class="grid grid-cols-1 gap-2">
-            <input id="cust-name" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Tên khách hàng *" />
-            <input id="cust-phone" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Số điện thoại *" />
+            <input id="cust-name"
+              class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150"
+              placeholder="Tên khách hàng *" />
+            <input id="cust-phone"
+              class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150"
+              placeholder="Số điện thoại *" />
             <!-- Section 1: Địa chỉ nhận hàng (bắt buộc) -->
             <div class="rounded-xl border border-primary/15 bg-cream/30 px-3 pt-2.5 pb-3">
-              <div class="text-xs font-semibold text-primary/70 mb-1.5">📮 Địa chỉ nhận hàng <span class="text-red-500">*</span></div>
-              <input id="cust-address" class="w-full rounded-lg border border-primary/20 bg-white p-2.5 text-sm min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Nhập địa chỉ giao hàng cụ thể..." />
+              <div class="text-xs font-semibold text-primary/70 mb-1.5">📮 Địa chỉ nhận hàng <span
+                  class="text-red-500">*</span></div>
+              <input id="cust-address"
+                class="w-full rounded-lg border border-primary/20 bg-white p-2.5 text-sm min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150"
+                placeholder="Nhập địa chỉ giao hàng cụ thể..." />
               <div id="err-address" class="hidden text-xs text-red-600 mt-1">Vui lòng nhập địa chỉ nhận hàng.</div>
             </div>
             <!-- Section 2: Vị trí ghim bản đồ (tuỳ chọn) -->
             <div class="rounded-xl border border-primary/15 bg-cream/30 px-3 pt-2.5 pb-3">
-              <div class="text-xs font-semibold text-primary/70 mb-0.5">📍 Vị trí giao hàng <span class="text-xs text-primary/40 font-normal">(Tuỳ chọn)</span></div>
-              <p class="text-xs text-primary/50 mb-2">Ghim vị trí để mở khoá thanh toán chuyển khoản (trong bán kính 2km từ quán)</p>
-              <button type="button" id="open-map-btn" class="w-full flex items-center justify-center gap-2 py-2.5 min-h-[44px] rounded-xl border-2 border-dashed border-accent/40 bg-accent/5 text-accent font-semibold text-sm hover:border-accent hover:bg-accent/10 active:scale-95 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              <div class="text-xs font-semibold text-primary/70 mb-0.5">📍 Vị trí giao hàng <span
+                  class="text-xs text-primary/40 font-normal">(Tuỳ chọn)</span></div>
+              <p class="text-xs text-primary/50 mb-2">Ghim vị trí để mở khoá thanh toán chuyển khoản (trong bán kính 2km
+                từ quán)</p>
+              <button type="button" id="open-map-btn"
+                class="w-full flex items-center justify-center gap-2 py-2.5 min-h-[44px] rounded-xl border-2 border-dashed border-accent/40 bg-accent/5 text-accent font-semibold text-sm hover:border-accent hover:bg-accent/10 active:scale-95 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
                 <span id="pin-btn-label">📍 Chọn vị trí trên bản đồ</span>
               </button>
               <div id="pinned-status" class="hidden mt-2 text-xs rounded-lg px-3 py-2"></div>
             </div>
             <div id="err-name" class="hidden text-xs text-red-600">Vui lòng nhập tên.</div>
-            <div id="err-phone" class="hidden text-xs text-red-600">Số điện thoại không hợp lệ (0xxxxxxxxx hoặc +84xxxxxxxxx).</div>
+            <div id="err-phone" class="hidden text-xs text-red-600">Số điện thoại không hợp lệ (0xxxxxxxxx hoặc
+              +84xxxxxxxxx).</div>
           </div>
         </div>
         <div>
           <div class="text-sm mb-2 font-semibold">Hình thức thanh toán</div>
           <div class="flex items-center gap-2">
-            <button id="btn-cash" class="flex-1 px-3 py-3 min-h-[48px] rounded-xl border border-primary/20 bg-white hover:shadow-lg text-sm font-medium transition">💵 Tiền mặt</button>
-            <button id="btn-transfer" class="flex-1 px-3 py-3 min-h-[48px] rounded-xl border border-primary/20 bg-white hover:shadow-lg text-sm font-medium transition">🏦 Chuyển khoản</button>
+            <button id="btn-cash"
+              class="flex-1 px-3 py-3 min-h-[48px] rounded-xl border border-primary/20 bg-white hover:shadow-lg text-sm font-medium transition">💵
+              Tiền mặt</button>
+            <button id="btn-transfer"
+              class="flex-1 px-3 py-3 min-h-[48px] rounded-xl border border-primary/20 bg-white hover:shadow-lg text-sm font-medium transition">🏦
+              Chuyển khoản</button>
           </div>
-          <div id="payment-restriction-notice" class="text-xs px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 mt-2">
+          <div id="payment-restriction-notice"
+            class="text-xs px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 mt-2">
             ⚠️ Hãy ghím vị trí trên bản đồ để mở khóa thanh toán chuyển khoản.
           </div>
           <div id="err-method" class="hidden text-xs text-red-600 mt-1">Vui lòng chọn phương thức thanh toán.</div>
@@ -117,8 +177,10 @@
 
       <div id="section-transfer" class="hidden">
         <div class="flex flex-col items-center mb-3">
-          <img id="qr" alt="VietQR" class="w-full max-w-[260px] h-auto rounded-2xl border border-primary/10 object-contain shadow-soft" />
-          <p class="text-xs text-primary/60 mt-2 text-center">Quét mã bằng ứng dụng ngân hàng hoặc ví điện tử (Napas 24/7)</p>
+          <img id="qr" alt="VietQR"
+            class="w-full max-w-[260px] h-auto rounded-2xl border border-primary/10 object-contain shadow-soft" />
+          <p class="text-xs text-primary/60 mt-2 text-center">Quét mã bằng ứng dụng ngân hàng hoặc ví điện tử (Napas
+            24/7)</p>
         </div>
         <!-- Upload zone -->
         <input id="receipt" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" />
@@ -126,8 +188,11 @@
           <div class="relative rounded-2xl overflow-hidden border-2 border-success bg-cream">
             <img id="receipt-preview" alt="" class="w-full max-h-52 object-contain" />
             <div class="absolute top-2 right-2 flex gap-1.5">
-              <button id="receipt-change" class="px-2.5 py-1.5 text-xs rounded-lg bg-white/90 border border-primary/20 text-primary shadow active:scale-95">Đổi ảnh</button>
-              <button id="receipt-delete" class="px-2.5 py-1.5 text-xs rounded-lg bg-red-100/90 text-red-700 shadow active:scale-95">Xoá</button>
+              <button id="receipt-change"
+                class="px-2.5 py-1.5 text-xs rounded-lg bg-white/90 border border-primary/20 text-primary shadow active:scale-95">Đổi
+                ảnh</button>
+              <button id="receipt-delete"
+                class="px-2.5 py-1.5 text-xs rounded-lg bg-red-100/90 text-red-700 shadow active:scale-95">Xoá</button>
             </div>
           </div>
           <div class="text-xs text-primary/50 mt-1 flex gap-2">
@@ -135,42 +200,53 @@
             <span id="receipt-preview-size"></span>
           </div>
         </div>
-        <label id="receipt-upload-btn" for="receipt" class="mt-2 flex flex-col items-center justify-center gap-2 w-full min-h-[80px] rounded-2xl border-2 border-dashed border-primary/25 bg-cream/50 cursor-pointer hover:border-accent hover:bg-cream transition">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-primary/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5V19a1.5 1.5 0 001.5 1.5h15A1.5 1.5 0 0021 19v-2.5M16 9l-4-4m0 0L8 9m4-4v12"/></svg>
+        <label id="receipt-upload-btn" for="receipt"
+          class="mt-2 flex flex-col items-center justify-center gap-2 w-full min-h-[80px] rounded-2xl border-2 border-dashed border-primary/25 bg-cream/50 cursor-pointer hover:border-accent hover:bg-cream transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-primary/40" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 16.5V19a1.5 1.5 0 001.5 1.5h15A1.5 1.5 0 0021 19v-2.5M16 9l-4-4m0 0L8 9m4-4v12" />
+          </svg>
           <span class="text-sm text-primary/60">Tải lên ảnh biên lai chuyển khoản</span>
           <span class="text-xs text-primary/40">JPEG · PNG · WebP · Tối đa 5MB</span>
         </label>
         <div id="receipt-info" class="hidden"></div>
-        <div id="err-receipt" class="hidden text-xs text-red-600 mt-1">Vui lòng tải ảnh biên lai để xác nhận thanh toán.</div>
+        <div id="err-receipt" class="hidden text-xs text-red-600 mt-1">Vui lòng tải ảnh biên lai để xác nhận thanh toán.
+        </div>
       </div>
 
-      <button id="submit-order" class="mt-5 w-full py-4 rounded-2xl bg-primary text-white font-semibold text-base tracking-wide hover:shadow-lg transition-all duration-150 active:scale-95 flex items-center justify-center gap-2 min-h-[56px]"><span id="submit-text">Gửi đơn hàng</span><span id="submit-spinner" class="hidden animate-spin">⟳</span></button>
+      <button id="submit-order"
+        class="mt-5 w-full py-4 rounded-2xl bg-primary text-white font-semibold text-base tracking-wide hover:shadow-lg transition-all duration-150 active:scale-95 flex items-center justify-center gap-2 min-h-[56px]"><span
+          id="submit-text">Gửi đơn hàng</span><span id="submit-spinner" class="hidden animate-spin">⟳</span></button>
 
       <div class="mt-3 text-center text-xs">
         Cần hỗ trợ hoặc gửi ảnh biên lai?
         <a id="goto-chat" href="index.html" class="text-accent underline underline-offset-4">Nhắn tin ngay</a>
-        · <button id="copy-hotline" class="underline underline-offset-4 text-primary/80" type="button">Hotline 0985.679.565</button>
+        · <button id="copy-hotline" class="underline underline-offset-4 text-primary/80" type="button">Hotline
+          0985.679.565</button>
       </div>
     </div>
   </div>
 
-  <div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-6 px-4 py-2 rounded-lg text-white text-sm shadow-soft hidden z-50"></div>
+  <div id="toast"
+    class="fixed left-1/2 -translate-x-1/2 bottom-6 px-4 py-2 rounded-lg text-white text-sm shadow-soft hidden z-50">
+  </div>
 
   <script>
     const params = new URLSearchParams(location.search)
     const bill = params.get('bill') || 'BILL102'
     const amount = Number(params.get('amount') || 78000)
     const content = params.get('content') || `PAY ${bill}`
-    
+
     // Clear URL parameters on page load
     if (window.location.search) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    function formatVND(v){ return Number(v).toLocaleString('vi-VN') + 'đ' }
+    function formatVND(v) { return Number(v).toLocaleString('vi-VN') + 'đ' }
 
     function amountToWords(vnd) {
-      const ones = ['không','một','hai','ba','bốn','năm','sáu','bảy','tám','chín']
+      const ones = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín']
       function readHundreds(n) {
         if (n === 0) return ''
         const h = Math.floor(n / 100), t = Math.floor((n % 100) / 10), u = n % 10
@@ -199,24 +275,24 @@
     const wordsEl = document.getElementById('amount-words')
     if (wordsEl) wordsEl.textContent = amountToWords(amount)
 
-    // --- Order summary accordion ---
-    ;(function initSummary() {
-      let saved = null
-      try { saved = JSON.parse(sessionStorage.getItem('order_' + bill) || 'null') } catch(e){}
-      const body = document.getElementById('order-summary-body')
-      const countEl = document.getElementById('summary-count')
-      const totalEl = document.getElementById('summary-total')
-      if (!saved || !saved.items || !saved.items.length) {
-        countEl.textContent = '(không có dữ liệu)'
-        return
-      }
-      const totalQty = saved.items.reduce((s, it) => s + it.qty, 0)
-      countEl.textContent = totalQty + ' món'
-      totalEl.textContent = formatVND(saved.totalK * 1000)
-      saved.items.forEach(function(it) {
-        const row = document.createElement('div')
-        row.className = 'flex items-center gap-3 px-3 py-2.5'
-        row.innerHTML = `
+      // --- Order summary accordion ---
+      ; (function initSummary() {
+        let saved = null
+        try { saved = JSON.parse(sessionStorage.getItem('order_' + bill) || 'null') } catch (e) { }
+        const body = document.getElementById('order-summary-body')
+        const countEl = document.getElementById('summary-count')
+        const totalEl = document.getElementById('summary-total')
+        if (!saved || !saved.items || !saved.items.length) {
+          countEl.textContent = '(không có dữ liệu)'
+          return
+        }
+        const totalQty = saved.items.reduce((s, it) => s + it.qty, 0)
+        countEl.textContent = totalQty + ' món'
+        totalEl.textContent = formatVND(saved.totalK * 1000)
+        saved.items.forEach(function (it) {
+          const row = document.createElement('div')
+          row.className = 'flex items-center gap-3 px-3 py-2.5'
+          row.innerHTML = `
           <img src="${it.img || ''}" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-primary/10" onerror="this.style.display='none'" />
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium truncate">${it.name}</div>
@@ -224,14 +300,14 @@
           </div>
           <div class="text-sm font-semibold text-accent flex-shrink-0">${formatVND(it.priceK * it.qty * 1000)}</div>
         `
-        body.appendChild(row)
-      })
-      document.getElementById('order-summary-toggle').addEventListener('click', function() {
-        const isOpen = !body.classList.contains('hidden')
-        body.classList.toggle('hidden', isOpen)
-        document.getElementById('summary-chevron').style.transform = isOpen ? '' : 'rotate(180deg)'
-      })
-    })()
+          body.appendChild(row)
+        })
+        document.getElementById('order-summary-toggle').addEventListener('click', function () {
+          const isOpen = !body.classList.contains('hidden')
+          body.classList.toggle('hidden', isOpen)
+          document.getElementById('summary-chevron').style.transform = isOpen ? '' : 'rotate(180deg)'
+        })
+      })()
 
     const qrData = encodeURIComponent(`B.BLING|${bill}|${amount}|${content}`)
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${qrData}`
@@ -242,11 +318,11 @@
     copyToast.className = 'fixed left-1/2 -translate-x-1/2 bottom-6 px-3 py-2 rounded-lg bg-success text-white text-xs shadow-soft hidden'
     copyToast.textContent = 'Đã sao chép'
     document.body.appendChild(copyToast)
-    function showCopyToast(){
+    function showCopyToast() {
       copyToast.classList.remove('hidden')
-      setTimeout(()=>copyToast.classList.add('hidden'), 1200)
+      setTimeout(() => copyToast.classList.add('hidden'), 1200)
     }
-    function copyText(t){ navigator.clipboard.writeText(t).then(showCopyToast) }
+    function copyText(t) { navigator.clipboard.writeText(t).then(showCopyToast) }
     document.getElementById('copy-bill').addEventListener('click', () => copyText(bill))
     document.getElementById('copy-amount').addEventListener('click', () => copyText(String(amount)))
 
@@ -268,12 +344,12 @@
     const errReceipt = document.getElementById('err-receipt')
 
 
-    function isValidPhone(s){
-      const v = (s||'').trim()
+    function isValidPhone(s) {
+      const v = (s || '').trim()
       // Accept: 0123456789-01234567890 (10-11 digits), +84xxxxxxxxx (11-12 chars), 84xxxxxxxxx
       return /^(0\d{9,10}|\+?84\d{9,10}|84\d{9,10})$/.test(v)
     }
-    function validateAndShow(){
+    function validateAndShow() {
       const nameOk = nameEl.value.trim().length > 0
       const phoneOk = isValidPhone(phoneEl.value)
       const methodOk = method === 'cash' || method === 'transfer'
@@ -287,7 +363,7 @@
       errReceipt.classList.toggle('hidden', receiptOk)
       return nameOk && phoneOk && methodOk && receiptOk && addrOk
     }
-    ;[nameEl, phoneEl, addrEl].forEach(function(el) { el.addEventListener('input', validateAndShow) })
+    ;[nameEl, phoneEl, addrEl].forEach(function (el) { el.addEventListener('input', validateAndShow) })
 
     btnCash.addEventListener('click', function () { selectMethod('cash') })
     btnTransfer.addEventListener('click', function () {
@@ -353,7 +429,7 @@
       }
       const status = method === 'cash' ? 'unverified_cash' : 'pending_transfer'
       let saved = null
-      try { saved = JSON.parse(sessionStorage.getItem('order_' + bill) || 'null') } catch(e){}
+      try { saved = JSON.parse(sessionStorage.getItem('order_' + bill) || 'null') } catch (e) { }
       if (!saved || !saved.items || !saved.items.length) {
         showToast('Không tìm thấy giỏ hàng. Vui lòng đặt món lại từ trang chủ.', true)
         return
@@ -411,7 +487,7 @@
         }, 8000)
         s.onload = () => {
           clearTimeout(timeout)
-          setTimeout(()=>{
+          setTimeout(() => {
             const t = document.getElementById('chat-toggle')
             if (t) t.click()
           }, 50)
@@ -430,16 +506,16 @@
       method = m
       if (m === 'cash') {
         sectionTransfer.classList.add('hidden')
-        btnCash.classList.add('bg-success','text-white','border-success','transition-all','duration-150')
-        btnCash.classList.remove('bg-white','text-primary')
-        btnTransfer.classList.remove('bg-success','text-white','border-success')
-        btnTransfer.classList.add('bg-white','text-primary','border-primary/20','transition-all','duration-150')
+        btnCash.classList.add('bg-success', 'text-white', 'border-success', 'transition-all', 'duration-150')
+        btnCash.classList.remove('bg-white', 'text-primary')
+        btnTransfer.classList.remove('bg-success', 'text-white', 'border-success')
+        btnTransfer.classList.add('bg-white', 'text-primary', 'border-primary/20', 'transition-all', 'duration-150')
       } else {
         sectionTransfer.classList.remove('hidden')
-        btnTransfer.classList.add('bg-success','text-white','border-success','transition-all','duration-150')
-        btnTransfer.classList.remove('bg-white','text-primary')
-        btnCash.classList.remove('bg-success','text-white','border-success')
-        btnCash.classList.add('bg-white','text-primary','border-primary/20','transition-all','duration-150')
+        btnTransfer.classList.add('bg-success', 'text-white', 'border-success', 'transition-all', 'duration-150')
+        btnTransfer.classList.remove('bg-white', 'text-primary')
+        btnCash.classList.remove('bg-success', 'text-white', 'border-success')
+        btnCash.classList.add('bg-white', 'text-primary', 'border-primary/20', 'transition-all', 'duration-150')
       }
       validateAndShow()
     }
@@ -452,8 +528,8 @@
     function haversineKm(lat1, lon1, lat2, lon2) {
       var R = 6371, toR = Math.PI / 180
       var dLat = (lat2 - lat1) * toR, dLon = (lon2 - lon1) * toR
-      var a = Math.sin(dLat/2)*Math.sin(dLat/2)
-            + Math.cos(lat1*toR)*Math.cos(lat2*toR)*Math.sin(dLon/2)*Math.sin(dLon/2)
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+        + Math.cos(lat1 * toR) * Math.cos(lat2 * toR) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
       return R * 2 * Math.asin(Math.sqrt(a))
     }
 
@@ -462,12 +538,12 @@
       var inRange = pinnedDistKm !== null && pinnedDistKm <= 2
       if (inRange) {
         btnTransfer.disabled = false
-        btnTransfer.classList.remove('opacity-40','cursor-not-allowed')
+        btnTransfer.classList.remove('opacity-40', 'cursor-not-allowed')
         notice.innerHTML = '📍 Cách quán <strong>' + pinnedDistKm.toFixed(1) + 'km</strong> – Miễn phí giao hàng'
         notice.className = 'text-xs px-3 py-2 rounded-lg bg-green-50 text-green-700 border border-green-200 mt-2'
       } else {
         btnTransfer.disabled = true
-        btnTransfer.classList.add('opacity-40','cursor-not-allowed')
+        btnTransfer.classList.add('opacity-40', 'cursor-not-allowed')
         var distTxt = pinnedDistKm !== null ? ' (' + pinnedDistKm.toFixed(1) + 'km)' : ''
         notice.innerHTML = '⚠️ Ngoài phạm vi hỗ trợ thanh toán trước' + distTxt
           + '. Vui lòng thanh toán tiền mặt khi nhận hàng hoặc liên hệ <strong>Hotline</strong>.'
@@ -554,7 +630,7 @@
           userMarker.setLatLng([lat, lng])
           leafletMap.setView([lat, lng], 16)
           updatePinDistance(lat, lng)
-        }, function () {})
+        }, function () { })
       }
     }
 
@@ -605,18 +681,24 @@
     applyPaymentRestriction()
   </script>
   <!-- Full-screen map modal -->
-  <div id="map-modal" class="hidden fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center" onclick="if(event.target===this)closeMapModal()">
-    <div class="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col" style="max-height:92vh">
+  <div id="map-modal"
+    class="hidden fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center"
+    onclick="if(event.target===this)closeMapModal()">
+    <div class="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+      style="max-height:92vh">
       <div class="flex items-center justify-between px-5 py-3.5 border-b border-primary/10 flex-shrink-0">
         <div class="font-semibold text-sm">Chọn vị trí giao hàng</div>
-        <button id="close-map-modal" type="button" onclick="closeMapModal()" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-cream text-primary/60 text-2xl leading-none">&times;</button>
+        <button id="close-map-modal" type="button" onclick="closeMapModal()"
+          class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-cream text-primary/60 text-2xl leading-none">&times;</button>
       </div>
       <div id="location-map" style="flex:1;min-height:360px"></div>
-      <div id="map-coords-label" class="px-4 py-2.5 text-xs text-primary/60 bg-cream/60 border-t border-primary/10 flex-shrink-0">
+      <div id="map-coords-label"
+        class="px-4 py-2.5 text-xs text-primary/60 bg-cream/60 border-t border-primary/10 flex-shrink-0">
         Kéo ghim đỏ để chọn vị trí của bạn
       </div>
       <div class="px-4 pb-6 pt-3 flex-shrink-0 bg-white">
-        <button id="confirm-location-btn" type="button" onclick="confirmLocation()" class="w-full py-3.5 min-h-[52px] rounded-2xl bg-primary text-white font-semibold text-sm hover:shadow-lg active:scale-95 transition">
+        <button id="confirm-location-btn" type="button" onclick="confirmLocation()"
+          class="w-full py-3.5 min-h-[52px] rounded-2xl bg-primary text-white font-semibold text-sm hover:shadow-lg active:scale-95 transition">
           ✓ Xác nhận vị trí này
         </button>
       </div>
@@ -625,7 +707,6 @@
 
   <!-- Image compression utilities for receipt upload -->
   <script src="image-utils.js" defer></script>
-  <!-- Nạp chat.js để có thể mở box chat ngay tại trang này -->
-  <script src="chat.js?v=20260301-1" defer></script>
 </body>
+
 </html>
