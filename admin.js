@@ -33,6 +33,40 @@ const AdminState = (() => {
     const TEN_MINUTES = 10 * 60 * 1000; 
     return (Date.now() - createdAt) < TEN_MINUTES; 
   }
+  // ── Time formatting helpers ──────────────────────────────────────────────
+  function _dayStart(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
+  // Relative time for sidebar (e.g. "vừa xong", "5 phút trước", "Hôm qua 14:32", "05/03 09:10")
+  function relativeTime(ts){
+    if (!ts) return '';
+    const delta = Date.now() - ts;
+    const d = new Date(ts);
+    const hm = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    if (delta < 60000) return 'vừa xong';
+    if (delta < 3600000) return Math.floor(delta / 60000) + ' phút trước';
+    const now = new Date();
+    if (_dayStart(d) === _dayStart(now)) return hm;
+    if (_dayStart(d) === _dayStart(now) - 86400000) return 'Hôm qua ' + hm;
+    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) + ' ' + hm;
+  }
+  // Full timestamp for message bubbles (HH:MM for today, "Hôm qua HH:MM", "DD/MM · HH:MM" older)
+  function formatMsgTime(ts){
+    if (!ts) return '';
+    const d = new Date(ts);
+    const hm = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    if (_dayStart(d) === _dayStart(now)) return hm;
+    if (_dayStart(d) === _dayStart(now) - 86400000) return 'Hôm qua · ' + hm;
+    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) + ' · ' + hm;
+  }
+  // Label for day separator chips ("Hôm nay", "Hôm qua", "Thứ X, DD/MM/YYYY")
+  function formatDayLabel(ts){
+    const d = new Date(ts);
+    const now = new Date();
+    if (_dayStart(d) === _dayStart(now)) return 'Hôm nay';
+    if (_dayStart(d) === _dayStart(now) - 86400000) return 'Hôm qua';
+    return d.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+  // ────────────────────────────────────────────────────────────────────────
   function el(tag, cls, html){ const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
   function qs(sel){ return document.querySelector(sel); }
   function qsa(sel){ return Array.from(document.querySelectorAll(sel)); }
@@ -75,8 +109,7 @@ const AdminState = (() => {
       if (orders.length > lastOrderCount && lastOrderCount > 0) playTing();
       lastOrderCount = orders.length;
       renderOrders();
-      renderThreads();
-      renderDetail();
+      renderThreads(); // sidebar only — do NOT call renderDetail() here (wipes active chat)
       renderReport();
     }, function () { if (qs('#admin-debug')) qs('#admin-debug').textContent = 'Mất kết nối Firebase'; });
   }
@@ -95,8 +128,10 @@ const AdminState = (() => {
           type: 'guest'
         };
       });
+      // Only update sidebar — do NOT call renderDetail() here.
+      // renderDetail() wipes chat.innerHTML and resets the messages listener,
+      // causing a full reload/jump every time lastMessageAt changes (e.g. on every reply).
       renderThreads();
-      renderDetail();
     }, function () { console.warn('Guest chats listener error'); });
   }
 
@@ -419,71 +454,157 @@ const AdminState = (() => {
   }
 
   function renderDetail(){
-    const chat = qs('#chat-log'), inputSec = qs('#chat-input-section'), emptyState = qs('#chat-empty-state');
+    const chat = qs('#chat-log');
+    const scrollContainer = qs('#chat-scroll-container'); // actual overflow-y-auto container
+    const inputSec = qs('#chat-input-section'), emptyState = qs('#chat-empty-state');
+    const chatHeader = qs('#chat-header'), headerName = qs('#chat-header-name'), headerInfo = qs('#chat-header-info'), headerAvatar = qs('#chat-avatar-text');
     
     if(!selectedId || !selectedType){
       if(inputSec) inputSec.classList.add('hidden');
+      if(chatHeader) chatHeader.classList.add('hidden');
       if(emptyState) emptyState.classList.remove('hidden');
-      if(chat) chat.classList.add('hidden');
+      if(chat) { chat.classList.add('hidden'); chat.innerHTML = ''; }
+      if(messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
       return;
     }
 
     if(inputSec) inputSec.classList.remove('hidden');
+    if(chatHeader) chatHeader.classList.remove('hidden');
     if(emptyState) emptyState.classList.add('hidden');
     if(chat) chat.classList.remove('hidden');
 
+    // Populate chat header (guest only — orders are not in chat tab)
+    if (headerName && headerInfo && headerAvatar) {
+      const guest = guestChats.find(g => g.id === selectedId);
+      if (guest) {
+        headerAvatar.textContent = '👤';
+        headerName.textContent = 'Khách chat trực tiếp';
+        const startTs = guest.createdAt || guest.lastMessageAt;
+        const startLabel = startTs
+          ? 'Bắt đầu: ' + new Date(startTs).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          : '';
+        const lastLabel = guest.lastMessageAt
+          ? ' · Cuối: ' + relativeTime(guest.lastMessageAt)
+          : '';
+        headerInfo.textContent = startLabel + lastLabel;
+      }
+    }
+
+    // Smart scroll — only auto-scroll when user is near the bottom (avoids scroll jump)
+    function smartScroll() {
+      if (!scrollContainer) return;
+      const threshold = 120;
+      const nearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < threshold;
+      if (nearBottom) {
+        scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+      }
+    }
+
     // Render chat messages
     if (chat) {
-      chat.innerHTML = '';
       if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
+      
       if (useFirebase && selectedId) {
         const collectionPath = selectedType === 'guest' ? 'guestChats' : 'orders';
+        chat.innerHTML = '';
+        let _lastRenderedDate = null; // tracks day for separator chips
+        
         messagesUnsub = db.collection(collectionPath).doc(selectedId).collection('messages').orderBy('createdAt').onSnapshot(function (snap) {
-          chat.innerHTML = '';
-          snap.docs.forEach(function (doc) {
-            const m = doc.data();
+          snap.docChanges().forEach(function (change) {
+            if (change.type === 'added') {
+              // Deduplicate by data-msg-id — prevents double render if snapshot re-fires
+              // Do NOT guard by hasPendingWrites: admin messages are NOT rendered locally,
+              // so the first 'added' event (hasPendingWrites:true) is the ONLY chance to render.
+              // The committed version fires as 'modified', which is ignored by type check above.
+              if (chat.querySelector('[data-msg-id="' + change.doc.id + '"]')) return;
+
+              const m = change.doc.data();
+              const msgTs = m.createdAt
+                ? (m.createdAt.toDate ? m.createdAt.toDate() : new Date(m.createdAt))
+                : null;
+
+              // ── Day separator ──────────────────────────────────────────
+              if (msgTs) {
+                const dayKey = msgTs.toDateString(); // locale-independent day key
+                if (dayKey !== _lastRenderedDate) {
+                  _lastRenderedDate = dayKey;
+                  const sep = document.createElement('div');
+                  sep.className = 'flex items-center gap-2 my-3 px-1';
+                  const lineL = document.createElement('div');
+                  lineL.className = 'flex-1 h-px bg-white/10';
+                  const chip = document.createElement('span');
+                  chip.className = 'text-[10px] text-gray-400 bg-gray-700/80 border border-white/10 px-2.5 py-1 rounded-full shrink-0';
+                  chip.textContent = formatDayLabel(msgTs.getTime());
+                  const lineR = document.createElement('div');
+                  lineR.className = 'flex-1 h-px bg-white/10';
+                  sep.appendChild(lineL); sep.appendChild(chip); sep.appendChild(lineR);
+                  chat.appendChild(sep);
+                }
+              }
+
+              const wrapper = document.createElement('div');
+              wrapper.className = 'flex flex-col ' + (m.from === 'admin' ? 'items-end' : 'items-start') + ' gap-0.5';
+              wrapper.dataset.msgId = change.doc.id;
+              
+              const bubble = document.createElement('div');
+              bubble.className = 'max-w-[75%] px-4 py-2.5 text-sm shadow-sm '
+                + (m.from === 'admin'
+                  ? 'bg-accent text-white rounded-2xl rounded-br-sm'
+                  : 'bg-gray-700 text-gray-100 rounded-2xl rounded-bl-sm');
+              
+              if (m.type === 'image') {
+                const img = document.createElement('img');
+                img.src = m.content;
+                img.className = 'max-h-48 max-w-full rounded-xl cursor-zoom-in hover:opacity-90 transition';
+                img.onclick = function () { window.open(m.content, '_blank'); };
+                bubble.appendChild(img);
+              } else {
+                bubble.textContent = m.content || '';
+              }
+              wrapper.appendChild(bubble);
+              
+              // ── Timestamp ──────────────────────────────────────────────
+              if (msgTs) {
+                const time = document.createElement('div');
+                time.className = 'text-[10px] px-1 ' + (m.from === 'admin' ? 'text-gray-400' : 'text-gray-500');
+                time.textContent = formatMsgTime(msgTs.getTime());
+                wrapper.appendChild(time);
+              }
+              
+              chat.appendChild(wrapper);
+              smartScroll();
+            } else if (change.type === 'removed') {
+              const msgEl = chat.querySelector('[data-msg-id="' + change.doc.id + '"]');
+              if (msgEl) msgEl.remove();
+            }
+          });
+        }, function(err) {
+          console.error('[Admin Chat] snapshot error:', err);
+          Toast.error('❌ Lỗi tải tin nhắn: ' + err.message);
+        });
+        
+        // Initial scroll to bottom after messages load
+        setTimeout(function() {
+          if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }, 400);
+
+      } else {
+        // Non-Firebase fallback
+        chat.innerHTML = '';
+        const o = orders.find(x => x.id === selectedId);
+        if (o && o.chat) {
+          o.chat.forEach(function(m){
             const wrapper = document.createElement('div');
-            wrapper.className = 'flex flex-col ' + (m.from === 'admin' ? 'items-end' : 'items-start') + ' mb-3';
-            
+            wrapper.className = 'flex flex-col ' + (m.from === 'admin' ? 'items-end' : 'items-start');
             const bubble = document.createElement('div');
-            bubble.className = 'max-w-[80%] ' + (m.from === 'admin' ? 'bg-accent text-white' : 'bg-gray-600 text-white') + ' px-3 py-2 rounded-lg';
-            if (m.type === 'image') {
-              const img = document.createElement('img');
-              img.src = m.content;
-              img.className = 'max-h-36 rounded cursor-zoom-in';
-              img.onclick = function () { window.open(m.content, '_blank'); };
-              bubble.appendChild(img);
-            } else {
-              bubble.textContent = m.content || '';
-            }
+            bubble.className = 'max-w-[75%] px-4 py-2.5 rounded-2xl text-sm '
+              + (m.from === 'admin' ? 'bg-accent text-white' : 'bg-gray-700 text-gray-100');
+            bubble.textContent = m.content || '';
             wrapper.appendChild(bubble);
-            
-            // Timestamp
-            if (m.createdAt) {
-              const ts = m.createdAt.toDate ? m.createdAt.toDate() : new Date(m.createdAt);
-              const time = document.createElement('div');
-              time.className = 'text-[10px] text-gray-500 mt-0.5 px-1';
-              time.textContent = ts.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-              wrapper.appendChild(time);
-            }
-            
             chat.appendChild(wrapper);
           });
-          chat.scrollTop = chat.scrollHeight;
-        });
-      } else {
-        (o.chat||[]).forEach(function(m){
-          const div = document.createElement('div');
-          div.className = 'max-w-[80%] ' + (m.from === 'admin' ? 'ml-auto bg-accent text-white' : 'mr-auto bg-gray-600') + ' px-3 py-2 rounded-lg';
-          if (m.type === 'image') {
-            const img = document.createElement('img');
-            img.src = m.content;
-            img.className = 'max-h-36 rounded cursor-zoom-in';
-            div.appendChild(img);
-          } else div.textContent = m.content || '';
-          chat.appendChild(div);
-        });
-        chat.scrollTop = chat.scrollHeight;
+        }
+        if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
   }
@@ -491,92 +612,69 @@ const AdminState = (() => {
     const root=qs('#chat-threads'); if(!root) return;
     root.innerHTML='';
     
-    // Merge orders and guest chats
-    const allThreads = [];
-    
-    // Add orders
-    orders.forEach(o => {
-      allThreads.push({
-        id: o.id,
-        type: 'order',
-        displayName: '#' + o.id,
-        subtitle: o.customer?.name || 'Khách',
-        timestamp: o.createdAt,
-        data: o
-      });
-    });
-    
-    // Add guest chats
-    guestChats.forEach(g => {
-      allThreads.push({
-        id: g.id,
-        type: 'guest',
-        displayName: '💬 Chat khách',
-        subtitle: g.sessionId.substring(0, 20) + '...',
-        timestamp: g.lastMessageAt || g.createdAt,
-        data: g
-      });
-    });
-    
-    // Sort by timestamp desc
-    allThreads.sort((a, b) => b.timestamp - a.timestamp);
-    
-    const pending = orders.filter(o=>o.status==='unverified_cash'||o.status==='pending_transfer');
     const q=qs('#chat-count'); 
-    if(q) q.textContent = (pending.length + guestChats.length) > 0 ? `${pending.length} đơn · ${guestChats.length} chat` : '';
-    
-    allThreads.forEach(thread => {
-      const isSelected = thread.id === selectedId && thread.type === selectedType;
-      const isNewGuest = thread.type === 'guest' && isNewOrder(thread.timestamp);
-      const row=el('div','flex items-center gap-2 rounded-lg p-3 transition '+(isSelected?'bg-accent/20 border border-accent/50':'bg-gray-700/50 hover:bg-gray-700 border border-white/5'));
+    if(q) q.textContent = guestChats.length ? `${guestChats.length} cuộc trò chuyện` : '';
+
+    if (!guestChats.length) {
+      const empty = el('div','flex flex-col items-center justify-center h-32 text-center');
+      empty.appendChild(el('div','text-3xl mb-2 opacity-30','💬'));
+      empty.appendChild(el('div','text-xs text-gray-500','Chưa có tin nhắn nào'));
+      empty.appendChild(el('div','text-xs text-gray-600 mt-1','Khách sẽ xuất hiện ở đây khi chat từ trang chủ'));
+      root.appendChild(empty);
+      return;
+    }
+
+    // Sort guest chats by last message time desc
+    const sorted = [...guestChats].sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+
+    sorted.forEach(g => {
+      const isSelected = g.id === selectedId && selectedType === 'guest';
+      const isNew = isNewOrder(g.lastMessageAt || g.createdAt);
       
-      const clickableArea = el('div', 'flex-1 flex items-center gap-2 cursor-pointer min-w-0');
-      const left=el('div','flex-1 min-w-0');
+      const row = el('div','thread-item flex items-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer ' + (isSelected ? 'active' : 'border border-transparent'));
       
-      // Icon + display name + NEW badge
-      const nameRow = el('div', 'flex items-center gap-1.5 mb-0.5');
-      if (thread.type === 'guest') {
-        nameRow.appendChild(el('span', 'text-xs', '👤'));
-      } else {
-        nameRow.appendChild(el('span', 'text-xs', '📦'));
+      const avatar = el('div','w-9 h-9 rounded-full bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center text-base shrink-0','👤');
+      row.appendChild(avatar);
+      
+      const left = el('div','flex-1 min-w-0');
+      
+      const nameRow = el('div','flex items-center justify-between gap-1 w-full');
+      const nameLeft = el('div','flex items-center gap-1.5 min-w-0');
+      nameLeft.appendChild(el('span','text-sm font-medium text-gray-200 truncate','Khách chat'));
+      if (isNew) {
+        nameLeft.appendChild(el('span','px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent text-white shrink-0 animate-pulse-subtle','MỚI'));
       }
-      nameRow.appendChild(el('span','text-sm font-medium truncate', thread.displayName));
-      if (isNewGuest) {
-        const newBadge = el('span','px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent text-white','MỚI');
-        nameRow.appendChild(newBadge);
-      }
+      nameRow.appendChild(nameLeft);
+      // Relative time — right aligned, updates on re-render
+      nameRow.appendChild(el('span','text-[10px] text-gray-400 shrink-0 tabular-nums', relativeTime(g.lastMessageAt || g.createdAt)));
       left.appendChild(nameRow);
+
+      // Session start date as subtitle
+      const startTs = g.createdAt || g.lastMessageAt;
+      const startLabel = startTs
+        ? 'Bắt đầu: ' + new Date(startTs).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : '';
+      left.appendChild(el('div','text-[10px] text-gray-500 truncate mt-0.5', startLabel));
       
-      left.appendChild(el('div','text-xs text-gray-500 truncate', thread.subtitle));
-      
-      // Last message preview
-      const lastTxt = thread.type === 'guest' ? 'Chat trực tiếp' : 'Xem tin nhắn';
-      left.appendChild(el('div','text-xs text-gray-400 truncate max-w-[150px]', lastTxt));
-      
-      clickableArea.appendChild(left);
-      
-      clickableArea.addEventListener('click', ()=>{
-        selectedId = thread.id;
-        selectedType = thread.type;
-        renderThreads(); 
+      row.appendChild(left);
+
+      const deleteBtn = el('button','text-gray-600 hover:text-red-400 text-sm px-1 shrink-0 transition','🗑️');
+      deleteBtn.title = 'Xóa chat';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm('Xóa cuộc trò chuyện này? Hành động không thể hoàn tác.')) {
+          deleteGuestChat(g.id);
+        }
+      });
+      row.appendChild(deleteBtn);
+
+      row.addEventListener('click', () => {
+        selectedId = g.id;
+        selectedType = 'guest';
+        renderThreads();
         renderDetail();
       });
-      
-      row.appendChild(clickableArea);
-      
-      // Delete button (only for guest chats)
-      if (thread.type === 'guest') {
-        const deleteBtn = el('button', 'text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-500/10 transition flex-shrink-0', '🗑️');
-        deleteBtn.title = 'Xóa chat này';
-        deleteBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (confirm('Xóa cuộc trò chuyện này?')) {
-            deleteGuestChat(thread.id);
-          }
-        });
-        row.appendChild(deleteBtn);
-      }
-      
+
       root.appendChild(row);
     });
   }
@@ -685,8 +783,32 @@ const AdminState = (() => {
     
     // Chat buttons
     const send=qs('#chat-send'), up=qs('#chat-upload'), input=qs('#chat-input');
+    // IME FIX (definitive):
+    // When user presses Enter while macOS Vietnamese IME has an active composition (no trailing space),
+    // Chrome fires: (1) keydown(Enter) → our handler sends & clears, then (2) IME commits its buffer
+    // via 'input' event re-inserting last word, then (3) macOS auto-fires a 2nd keydown(Enter) ~38ms
+    // later which sends the re-inserted word as a duplicate. compositionend NEVER fires in this path.
+    // Fix: _adminJustSent flag blocks the 2nd Enter within a 200ms window.
+    let _adminJustSent = false;
+    input&&input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (_adminJustSent) {
+          // This is the IME-passthrough 2nd Enter — discard it and clear any re-inserted text
+          input.value = '';
+          _adminJustSent = false;
+          return;
+        }
+        _adminJustSent = true;
+        setTimeout(() => { _adminJustSent = false; input.value = ''; }, 200);
+        send&&send.click();
+        input.value = '';
+      }
+    });
     send&&send.addEventListener('click', ()=>{
-      const t=input.value.trim(); if(!t||!selectedId||!selectedType) return;
+      const t = input.value.trim();
+      input.value = '';
+      if (!t||!selectedId||!selectedType) return;
       if (useFirebase) {
         const collectionPath = selectedType === 'guest' ? 'guestChats' : 'orders';
         db.collection(collectionPath).doc(selectedId).collection('messages').add({ 
@@ -700,10 +822,9 @@ const AdminState = (() => {
             }).catch(() => {});
           }
         }).catch(function(){ Toast.error('❌ Gửi tin nhắn thất bại'); });
-        input.value='';
       } else {
         const o=orders.find(x=>x.id===selectedId); if(o) o.chat.push({from:'admin',type:'text',content:t});
-        input.value=''; renderDetail(); renderThreads();
+        renderDetail(); renderThreads();
       }
     });
     up&&up.addEventListener('change', (e)=>{

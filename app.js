@@ -32,17 +32,19 @@ function renderMenu() {
     const section = document.createElement('div');
     section.innerHTML = `
       <h3 class="font-serif italic text-lg mb-3">${cat.name}</h3>
-      <div class="grid grid-cols-1 gap-3">
+      <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         ${cat.items.map(i => `
-          <div class="flex items-center justify-between rounded-xl bg-white/70 backdrop-blur px-4 py-4 shadow-soft border border-primary/10 hover:shadow-lg hover:transition-shadow hover:duration-200 cursor-pointer menu-item" data-card="${i.id}">
-            <div class="flex items-center gap-3 w-full">
-              <img src="${i.img}" alt="" class="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
-              <div class="flex-1">
-                <div class="font-semibold">${i.name}</div>
-                <div class="text-xs text-primary/70 border-t border-dashed border-primary/20 mt-1 pt-1">${i.priceK}k · ${formatVND(i.priceK)}</div>
-              </div>
+          <div class="flex flex-col rounded-2xl bg-white/70 backdrop-blur shadow-soft border border-primary/10 overflow-hidden cursor-pointer hover:shadow-lg transition-shadow menu-item" data-card="${i.id}">
+            <div class="relative aspect-[4/3] overflow-hidden bg-cream/60">
+              <img src="${i.img}" alt="${i.name}" class="w-full h-full object-cover" />
+              ${i.tag ? `<span class="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold text-white ${i.tag === 'Mới' ? 'bg-success' : 'bg-accent'}">${i.tag}</span>` : ''}
             </div>
-            <button data-id="${i.id}" class="add ml-3 px-3 py-2 rounded-lg bg-primary text-cream hover:shadow-lg active:scale-95 transition-all duration-150">+</button>
+            <div class="p-3 flex flex-col flex-1 gap-1.5">
+              <div class="font-semibold text-sm leading-snug line-clamp-2 min-h-[2.5rem]">${i.name}</div>
+              ${i.desc ? `<div class="text-[11px] text-primary/50 truncate">${i.desc}</div>` : '<div></div>'}
+              <div class="text-sm font-semibold text-accent">${formatVND(i.priceK)}</div>
+              <button data-id="${i.id}" class="add mt-auto w-full py-3 rounded-xl bg-primary text-cream text-sm font-semibold hover:shadow-lg active:scale-95 transition min-h-[44px]">+ Thêm</button>
+            </div>
           </div>
         `).join('')}
       </div>
@@ -185,6 +187,9 @@ function calcTotal() {
 
 function syncCartUI() {
   const totalK = calcTotal();
+  const totalItems = Object.values(state.cart).reduce((s, it) => s + it.qty, 0);
+  const countEl = document.getElementById('cart-count');
+  if (countEl) countEl.textContent = String(totalItems);
   if (totalK > 0) {
     cartBar.classList.remove('hidden');
     cartTotal.textContent = formatVND(totalK);

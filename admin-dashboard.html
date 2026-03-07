@@ -8,6 +8,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -32,6 +33,34 @@
     .animate-pulse-subtle {
       animation: pulse-subtle 2s ease-in-out infinite;
     }
+    /* Custom Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    /* Thread hover effect */
+    .thread-item {
+      transition: all 0.2s ease;
+    }
+    .thread-item:hover {
+      transform: translateX(4px);
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+    .thread-item.active {
+      background-color: rgba(194, 65, 12, 0.2);
+      border-left: 3px solid #C2410C;
+    }
   </style>
 </head>
 <body class="min-h-full bg-darkbg text-gray-100 font-sans">
@@ -43,7 +72,15 @@
           <span class="text-xs uppercase tracking-[0.2em] text-gray-400">Quản trị</span>
           <span class="ml-2 text-xs px-2 py-1 rounded-lg bg-gray-700">v20260301-3</span>
         </div>
-        <a href="index.html" class="text-xs px-3 py-1 rounded-full bg-accent text-white hover:opacity-90 transition">Về trang khách</a>
+        <div class="flex items-center gap-3">
+          <!-- Admin user info -->
+          <div id="admin-user-info" class="hidden items-center gap-2 px-3 py-1.5 rounded-full bg-gray-700 border border-white/10">
+            <img id="admin-avatar" src="" alt="" class="w-6 h-6 rounded-full object-cover" />
+            <span id="admin-name" class="text-xs text-gray-300 max-w-[120px] truncate"></span>
+          </div>
+          <a href="index.html" class="text-xs px-3 py-1 rounded-full bg-gray-700 border border-white/10 text-gray-300 hover:bg-gray-600 transition">Trang khách</a>
+          <button id="btn-logout" class="text-xs px-3 py-1 rounded-full bg-red-600/80 hover:bg-red-600 text-white transition">⏏ Đăng xuất</button>
+        </div>
       </div>
     </header>
 
@@ -54,6 +91,7 @@
         <button data-tab="menu" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">🍽️ Menu</button>
         <button data-tab="report" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">📈 Báo cáo</button>
         <button data-tab="settings" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">⚙️ Cài đặt</button>
+        <button data-tab="staff" class="tab px-3 py-2 rounded-lg bg-gray-800 border border-white/10 hover:bg-gray-700">👥 Nhân viên</button>
       </div>
     </nav>
     <div id="admin-debug" class="max-w-6xl mx-auto px-4 md:px-8 mb-2 text-xs text-gray-500"></div>
@@ -112,49 +150,77 @@
       </section>
 
       <!-- TAB: Chat (Messaging Only) -->
-      <section id="tab-chat" class="rounded-2xl bg-gray-800 border border-white/10 p-4 shadow-soft hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[70vh]">
-          <!-- Sidebar: Order Threads -->
-          <div class="lg:col-span-3 flex flex-col border-r border-white/10">
-            <div class="font-semibold mb-3 text-sm flex items-center justify-between pb-3 border-b border-white/10">
-              <span>📋 Danh sách Đơn</span>
-              <span id="chat-count" class="text-xs text-gray-500"></span>
+      <section id="tab-chat" class="rounded-2xl bg-gray-800 border border-white/10 shadow-soft hidden flex flex-col" style="min-height: 88vh;">
+        <div class="px-6 pt-6 pb-4 flex items-center justify-between shrink-0">
+          <div>
+            <h2 class="text-xl font-semibold text-gray-100">Tin nhắn Chat</h2>
+            <p class="text-xs text-gray-500 mt-1">Quản lý cuộc trò chuyện trực tiếp từ khách</p>
+          </div>
+          <span id="chat-count" class="px-3 py-1.5 rounded-lg bg-gray-700 text-xs font-medium text-gray-300"></span>
+        </div>
+        
+        <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-0 border-t border-white/10">
+          <!-- Sidebar: Guest Chat Threads ONLY -->
+          <div class="lg:col-span-4 flex flex-col border-r border-white/10">
+            <div class="px-4 py-3 text-xs text-gray-500 uppercase tracking-wider border-b border-white/10 shrink-0">
+              <span>💬 Khách nhắn trực tiếp</span>
             </div>
-            <div id="chat-threads" class="flex-1 space-y-2 overflow-y-auto"></div>
+            <div id="chat-threads" class="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar"></div>
           </div>
 
           <!-- Main: Chat Messages -->
-          <div class="lg:col-span-9 flex flex-col">
-            <!-- Chat History -->
-            <div class="flex-1 mb-3 overflow-y-auto bg-gray-900/50 rounded-lg border border-white/10 p-4">
-              <div id="chat-empty-state" class="h-full flex items-center justify-center text-center text-gray-500 text-sm">
+          <div class="lg:col-span-8 flex flex-col min-h-0">
+            <!-- Chat Header -->
+            <div id="chat-header" class="hidden px-5 py-3 border-b border-white/10 bg-gray-800/80 shrink-0">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-full bg-gradient-to-br from-accent to-orange-600 flex items-center justify-center text-white font-semibold text-sm shrink-0" id="chat-avatar-text"></div>
+                  <div>
+                    <div class="font-medium text-gray-200 text-sm" id="chat-header-name"></div>
+                    <div class="text-xs text-gray-500" id="chat-header-info"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Chat History — scroll container is THIS div, NOT #chat-log -->
+            <div id="chat-scroll-container" class="flex-1 min-h-0 overflow-y-auto p-5 custom-scrollbar">
+              <div id="chat-empty-state" class="h-full flex items-center justify-center text-center text-gray-500">
                 <div>
-                  <div class="text-2xl mb-2">💬</div>
-                  <div>Chọn một đơn hàng để xem và trả lời tin nhắn</div>
+                  <div class="text-5xl mb-3 opacity-30">💬</div>
+                  <div class="text-base font-medium mb-1 text-gray-400">Chọn một cuộc trò chuyện</div>
+                  <div class="text-sm text-gray-600">để xem tin nhắn và trả lời khách hàng</div>
                 </div>
               </div>
               <div id="chat-log" class="space-y-3 hidden"></div>
             </div>
 
             <!-- Chat Input Section -->
-            <div id="chat-input-section" class="hidden bg-gray-900/70 border border-white/10 rounded-lg p-3">
+            <div id="chat-input-section" class="hidden border-t border-white/10 p-4 bg-gray-900/50 shrink-0">
               <!-- Quick Replies -->
-              <div class="mb-2">
-                <div class="text-xs text-gray-500 mb-1">Phản hồi nhanh</div>
-                <div class="flex flex-wrap gap-1" id="quick-replies">
-                  <button class="qr px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">Đã xác minh, đơn đang pha chế</button>
-                  <button class="qr px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">Đơn đã xác nhận. Cảm ơn!</button>
-                  <button class="qr px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">Vui lòng chờ</button>
+              <div class="mb-3">
+                <div class="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                  <span>⚡</span>
+                  <span>Phản hồi nhanh</span>
+                </div>
+                <div class="flex flex-wrap gap-1.5" id="quick-replies">
+                  <button class="qr px-2.5 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs transition">✅ Đã xác minh, đơn đang pha chế</button>
+                  <button class="qr px-2.5 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs transition">✓ Đơn đã xác nhận. Cảm ơn!</button>
+                  <button class="qr px-2.5 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs transition">⏳ Vui lòng chờ trong giây lát</button>
+                  <button class="qr px-2.5 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs transition">📦 Đơn hàng đang được giao</button>
                 </div>
               </div>
 
               <!-- Message Input -->
               <div class="flex items-center gap-2">
-                <input id="chat-input" class="flex-1 rounded-lg border border-white/20 bg-gray-800 text-gray-200 p-2 text-sm placeholder-gray-500 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn..." />
-                <label class="cursor-pointer px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 text-sm shrink-0">📷
+                <input id="chat-input" class="flex-1 rounded-xl border border-white/20 bg-gray-700 text-gray-200 px-4 py-2.5 text-sm placeholder-gray-500 outline-none focus:ring-2 focus:ring-accent focus:border-accent transition" placeholder="Nhập tin nhắn rồi Enter hoặc bấm Gửi..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                <label class="cursor-pointer px-3.5 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-lg shrink-0 transition flex items-center justify-center" title="Tải ảnh lên">
+                  📷
                   <input id="chat-upload" type="file" accept="image/*" class="hidden" />
                 </label>
-                <button id="chat-send" class="px-4 py-2 rounded-lg bg-accent text-white text-sm shrink-0">Gửi</button>
+                <button id="chat-send" type="button" class="px-5 py-2.5 rounded-xl bg-accent hover:bg-accent/80 text-white text-sm font-medium shrink-0 transition shadow-lg">
+                  Gửi
+                </button>
               </div>
             </div>
           </div>
@@ -216,6 +282,31 @@
           </div>
         </div>
       </section>
+      <!-- TAB: Nhân viên -->
+      <section id="tab-staff" class="rounded-2xl bg-gray-800 border border-white/10 p-4 shadow-soft hidden">
+        <div class="flex items-center justify-between mb-4">
+          <div class="font-semibold">Quản lý nhân viên / quyền truy cập</div>
+        </div>
+
+        <!-- Add new email -->
+        <div class="flex gap-2 mb-5">
+          <input id="staff-email-input" type="email" placeholder="Nhập email Google cần cấp quyền..." class="flex-1 rounded-lg border border-white/20 bg-gray-700 text-gray-200 px-3 py-2 text-sm placeholder-gray-500 outline-none focus:ring-2 focus:ring-accent" />
+          <button id="staff-add-btn" class="px-4 py-2 rounded-lg bg-accent hover:bg-accent/80 text-white text-sm font-medium shrink-0 transition">+ Thêm quyền</button>
+        </div>
+        <div id="staff-add-error" class="hidden mb-3 px-3 py-2 rounded-lg bg-red-500/20 text-red-300 text-xs"></div>
+
+        <!-- Staff list -->
+        <div class="rounded-xl border border-white/10 overflow-hidden">
+          <div class="grid grid-cols-12 px-4 py-2 bg-gray-900/50 text-xs text-gray-500 uppercase tracking-wider">
+            <div class="col-span-7">Email</div>
+            <div class="col-span-4">Thêm lúc</div>
+            <div class="col-span-1"></div>
+          </div>
+          <div id="staff-list" class="divide-y divide-white/5"></div>
+          <div id="staff-empty" class="hidden px-4 py-8 text-center text-sm text-gray-500">Chưa có tài khoản nào được cấp quyền.</div>
+          <div id="staff-loading" class="px-4 py-6 text-center text-sm text-gray-500">Đang tải...</div>
+        </div>
+      </section>
     </main>
 
     <!-- MODAL: Order Detail -->
@@ -254,7 +345,7 @@
           <div class="rounded-xl bg-gray-900/50 border border-white/10 p-5">
             <div class="text-xs text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-2">
               <span>📍</span>
-              <span>Địa chỉ giao hàng / Số bàn</span>
+              <span>Địa chỉ giao hàng</span>
             </div>
             <div id="modal-detail-address" class="text-sm text-gray-300 leading-relaxed"></div>
           </div>
@@ -301,9 +392,154 @@
       </div>
     </div>
   </div>
+  <script>
+    // Auth guard + user info — runs after firebase-auth-compat.js in <head>
+    (function() {
+      function waitForAuth() {
+        if (typeof firebase === 'undefined' || !firebase.auth || !firebase.firestore) {
+          setTimeout(waitForAuth, 50); return;
+        }
+        firebase.auth().onAuthStateChanged(function(user) {
+          if (!user) { location.replace('admin-login.html'); return; }
+          // Check Firestore admin_users collection
+          firebase.firestore().collection('admin_users').doc(user.email).get()
+            .then(function(doc) {
+              if (!doc.exists) {
+                firebase.auth().signOut();
+                location.replace('admin-login.html');
+                return;
+              }
+              // Show user info in header
+              var info = document.getElementById('admin-user-info');
+              var avatarEl = document.getElementById('admin-avatar');
+              var nameEl = document.getElementById('admin-name');
+              if (info) {
+                if (user.photoURL && avatarEl) avatarEl.src = user.photoURL;
+                if (nameEl) nameEl.textContent = user.displayName || user.email;
+                info.classList.remove('hidden');
+                info.classList.add('flex');
+              }
+            })
+            .catch(function() { location.replace('admin-login.html'); });
+        });
+      }
+      waitForAuth();
+    })();
+  </script>
+  <script defer>
+    // Logout
+    document.addEventListener('DOMContentLoaded', function() {
+      var logoutBtn = document.getElementById('btn-logout');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+          firebase.auth().signOut().then(function() {
+            location.href = 'admin-login.html';
+          });
+        });
+      }
+
+      // Staff tab
+      var db = null;
+      function getDb() { return db || (db = window.bbDb || firebase.firestore()); }
+
+      function formatDate(ts) {
+        if (!ts) return '—';
+        var d = ts.toDate ? ts.toDate() : new Date(ts);
+        return d.toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      }
+
+      function renderStaffList(docs) {
+        var list = document.getElementById('staff-list');
+        var empty = document.getElementById('staff-empty');
+        var loading = document.getElementById('staff-loading');
+        if (loading) loading.classList.add('hidden');
+        if (!docs.length) {
+          if (list) list.innerHTML = '';
+          if (empty) empty.classList.remove('hidden');
+          return;
+        }
+        if (empty) empty.classList.add('hidden');
+        if (!list) return;
+        list.innerHTML = docs.map(function(d) {
+          var data = d.data();
+          return '<div class="grid grid-cols-12 items-center px-4 py-3 hover:bg-white/5 transition text-sm">'
+            + '<div class="col-span-7 text-gray-200 font-mono text-xs truncate" title="' + d.id + '">' + d.id + '</div>'
+            + '<div class="col-span-4 text-gray-500 text-xs">' + formatDate(data.addedAt) + '</div>'
+            + '<div class="col-span-1 flex justify-end">'
+            + '<button class="staff-del p-1.5 rounded-lg hover:bg-red-500/20 text-red-400 hover:text-red-300 transition" data-email="' + d.id + '" title="Thu hồi quyền">'
+            + '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>'
+            + '</button></div></div>';
+        }).join('');
+        // Bind delete buttons
+        list.querySelectorAll('.staff-del').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var email = btn.dataset.email;
+            if (!confirm('Thu hồi quyền truy cập của:\n' + email + '\n\nBạn chắc chắn?')) return;
+            var currentUser = firebase.auth().currentUser;
+            if (currentUser && currentUser.email === email) {
+              alert('Không thể xóa tài khoản đang đăng nhập!');
+              return;
+            }
+            getDb().collection('admin_users').doc(email).delete()
+              .then(loadStaff)
+              .catch(function(e) { alert('Lỗi xóa: ' + e.message); });
+          });
+        });
+      }
+
+      function loadStaff() {
+        var loading = document.getElementById('staff-loading');
+        if (loading) loading.classList.remove('hidden');
+        getDb().collection('admin_users').orderBy('addedAt', 'desc').get()
+          .then(function(snap) { renderStaffList(snap.docs); })
+          .catch(function(e) {
+            var loading = document.getElementById('staff-loading');
+            if (loading) { loading.textContent = 'Lỗi tải dữ liệu: ' + e.message; }
+          });
+      }
+
+      // Load staff when tab is clicked
+      document.querySelectorAll('.tab').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          if (btn.dataset.tab === 'staff') loadStaff();
+        });
+      });
+
+      // Add staff
+      var addBtn = document.getElementById('staff-add-btn');
+      var addInput = document.getElementById('staff-email-input');
+      var addError = document.getElementById('staff-add-error');
+      if (addBtn) {
+        addBtn.addEventListener('click', function() {
+          if (addError) addError.classList.add('hidden');
+          var email = (addInput ? addInput.value : '').trim().toLowerCase();
+          if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+            if (addError) { addError.textContent = 'Email không hợp lệ.'; addError.classList.remove('hidden'); }
+            return;
+          }
+          var currentUser = firebase.auth().currentUser;
+          getDb().collection('admin_users').doc(email).set({
+            email: email,
+            addedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            addedBy: currentUser ? currentUser.email : 'unknown'
+          }).then(function() {
+            if (addInput) addInput.value = '';
+            loadStaff();
+          }).catch(function(e) {
+            if (addError) { addError.textContent = 'Lỗi: ' + e.message; addError.classList.remove('hidden'); }
+          });
+        });
+        if (addInput) {
+          addInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') addBtn.click();
+          });
+        }
+      }
+    });
+  </script>
   <script src="toast.js" defer></script>
   <script src="image-utils.js" defer></script>
   <script src="menu-store.js" defer></script>
-  <script src="admin.js?v=20260302-1" defer></script>
+  <script src="admin.js?v=20260307-9" defer></script>
 </body>
 </html>

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Đăng nhập Quản trị | B.BLING</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -24,35 +28,107 @@
                   linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02));
     }
     .shadow-soft{ box-shadow: 0 6px 20px rgba(62,39,35,.12); }
+    .btn-google { transition: all 0.15s ease; }
+    .btn-google:hover { box-shadow: 0 4px 16px rgba(62,39,35,.18); transform: translateY(-1px); }
+    .btn-google:active { transform: scale(0.97); }
   </style>
 </head>
 <body class="min-h-full bg-cream text-primary font-sans paper">
   <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white rounded-3xl shadow-soft p-6">
-      <div class="text-center mb-6">
-        <div class="font-serif italic text-3xl">B.BLING</div>
-        <div class="text-xs uppercase tracking-[0.2em]">Admin Login</div>
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-soft p-8">
+
+      <div class="text-center mb-8">
+        <div class="font-serif italic text-4xl mb-1">B.BLING</div>
+        <div class="text-xs uppercase tracking-[0.25em] text-primary/60">Coffee &amp; Eatery &middot; Quản trị</div>
       </div>
-      <form id="form" class="space-y-4">
-        <div>
-          <label class="block text-xs mb-1">Email</label>
-          <input id="email" type="email" required class="w-full rounded-xl border border-primary/20 p-3 outline-none focus:ring-2 focus:ring-accent/60" placeholder="staff@bbling.coffee" />
-        </div>
-        <div>
-          <label class="block text-xs mb-1">Mật khẩu</label>
-          <input id="password" type="password" required class="w-full rounded-xl border border-primary/20 p-3 outline-none focus:ring-2 focus:ring-accent/60" placeholder="••••••••" />
-        </div>
-        <button type="submit" class="w-full py-3 rounded-xl bg-primary text-white font-semibold active:scale-95">Đăng nhập</button>
-      </form>
-      <div class="text-center mt-3 text-xs text-primary/70">Dành cho nhân viên quầy</div>
+
+      <div class="mb-6 rounded-2xl bg-cream/60 border border-primary/10 px-5 py-4 text-center">
+        <div class="text-sm font-medium text-primary/80 mb-1">Khu vực dành riêng</div>
+        <div class="text-xs text-primary/50">Chỉ tài khoản được uỷ quyền mới có thể truy cập</div>
+      </div>
+
+      <button id="btn-google" class="btn-google w-full flex items-center justify-center gap-3 py-3.5 px-5 rounded-2xl bg-white border border-primary/20 shadow-soft text-primary font-semibold text-sm">
+        <!-- Google G icon -->
+        <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.85l6.1-6.1C34.46 3.1 29.53 1 24 1 14.82 1 7.07 6.48 3.64 14.22l7.1 5.52C12.5 13.67 17.77 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.52 24.5c0-1.64-.15-3.22-.42-4.75H24v9h12.7c-.55 2.95-2.2 5.45-4.68 7.13l7.18 5.58C43.46 37.58 46.52 31.5 46.52 24.5z"/>
+          <path fill="#FBBC05" d="M10.74 28.26A14.57 14.57 0 0 1 9.5 24c0-1.48.26-2.91.72-4.26l-7.1-5.52A23.93 23.93 0 0 0 0 24c0 3.88.93 7.55 2.57 10.78l8.17-6.52z"/>
+          <path fill="#34A853" d="M24 47c5.53 0 10.18-1.84 13.57-4.99l-7.18-5.58C28.6 37.83 26.44 38.5 24 38.5c-6.23 0-11.5-4.17-13.26-9.74l-8.17 6.52C6.07 43.07 14.44 47 24 47z"/>
+        </svg>
+        Tiếp tục với Google
+      </button>
+
+      <div id="login-error" class="hidden mt-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm text-center"></div>
+
+      <div class="text-center mt-6 text-xs text-primary/40">Dành cho nhân viên quầy được uỷ quyền</div>
       <div class="text-center mt-2 text-xs"><a href="index.html" class="text-accent underline underline-offset-4">Quay lại trang khách</a></div>
     </div>
   </div>
+
   <script>
-    document.getElementById('form').addEventListener('submit', (e) => {
-      e.preventDefault()
-      location.href = 'admin-dashboard.html'
-    })
+    var db = window.bbDb || firebase.firestore();
+
+    // Email được tự động thêm quyền khi collection admin_users còn trống
+    var BOOTSTRAP_ADMINS = ['phongnhat43@gmail.com'];
+
+    function checkAndRedirect(user) {
+      return db.collection('admin_users').doc(user.email).get()
+        .then(function(doc) {
+          if (doc.exists) {
+            location.href = 'admin-dashboard.html';
+          } else if (BOOTSTRAP_ADMINS.indexOf(user.email) !== -1) {
+            // Auto-bootstrap: tạo document admin đầu tiên nếu chưa có
+            return db.collection('admin_users').doc(user.email).set({
+              email: user.email,
+              addedAt: firebase.firestore.FieldValue.serverTimestamp(),
+              addedBy: 'bootstrap'
+            }).then(function() {
+              location.href = 'admin-dashboard.html';
+            });
+          } else {
+            firebase.auth().signOut();
+            showError('Tài khoản ' + user.email + ' không có quyền truy cập hệ thống.');
+          }
+        })
+        .catch(function(e) { showError('Lỗi kiểm tra quyền: ' + e.message); });
+    }
+
+    // Nếu đã đăng nhập, kiểm tra ngay
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) checkAndRedirect(user);
+    });
+
+    var errEl = document.getElementById('login-error');
+    function showError(msg) {
+      errEl.textContent = msg;
+      errEl.classList.remove('hidden');
+      setBtnLoading(false);
+    }
+    function hideError() { errEl.classList.add('hidden'); }
+
+    var btn = document.getElementById('btn-google');
+    function setBtnLoading(loading) {
+      btn.disabled = loading;
+      if (loading) {
+        btn.textContent = 'Đang xác thực...';
+      } else {
+        btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.85l6.1-6.1C34.46 3.1 29.53 1 24 1 14.82 1 7.07 6.48 3.64 14.22l7.1 5.52C12.5 13.67 17.77 9.5 24 9.5z"/><path fill="#4285F4" d="M46.52 24.5c0-1.64-.15-3.22-.42-4.75H24v9h12.7c-.55 2.95-2.2 5.45-4.68 7.13l7.18 5.58C43.46 37.58 46.52 31.5 46.52 24.5z"/><path fill="#FBBC05" d="M10.74 28.26A14.57 14.57 0 0 1 9.5 24c0-1.48.26-2.91.72-4.26l-7.1-5.52A23.93 23.93 0 0 0 0 24c0 3.88.93 7.55 2.57 10.78l8.17-6.52z"/><path fill="#34A853" d="M24 47c5.53 0 10.18-1.84 13.57-4.99l-7.18-5.58C28.6 37.83 26.44 38.5 24 38.5c-6.23 0-11.5-4.17-13.26-9.74l-8.17 6.52C6.07 43.07 14.44 47 24 47z"/></svg> Tiếp tục với Google';
+      }
+    }
+
+    btn.addEventListener('click', function() {
+      hideError();
+      setBtnLoading(true);
+      var provider = new firebase.auth.GoogleAuthProvider();
+      firebase.auth().signInWithPopup(provider).then(function(result) {
+        return checkAndRedirect(result.user);
+      }).catch(function(err) {
+        if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+          setBtnLoading(false); return;
+        }
+        showError('Đăng nhập thất bại: ' + (err.message || err.code));
+      });
+    });
   </script>
 </body>
 </html>

@@ -62,18 +62,18 @@
   <div class="relative min-h-screen botanical">
     <header class="sticky top-0 z-30 px-4 pt-6 pb-4 md:px-8">
       <div class="mx-auto max-w-2xl text-center">
-        <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/70 backdrop-blur shadow-soft">
-          <a href="index.html" class="text-3xl md:text-4xl font-bold font-serif italic tracking-wide">B.BLING</a>
-          <span class="text-sm uppercase tracking-[0.2em]">Coffee & Eatery</span>
-          <span class="ml-3 text-xs px-3 py-1 rounded-full bg-accent text-white">0985.679.565</span>
-          <a href="tracking.html?mode=search" class="ml-3 text-xs px-3 py-1 rounded-full bg-white text-primary border border-primary/20 shadow-soft hover:shadow-lg active:scale-95 transition">Tra cứu đơn</a>
-          <a href="admin-login.html" class="ml-3 text-xs px-3 py-1 rounded-full bg-primary text-cream shadow-soft hover:shadow-lg active:scale-95 transition">Hệ thống Quản trị</a>
+        <div class="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 px-4 py-2.5 rounded-2xl bg-white/70 backdrop-blur shadow-soft">
+          <a href="index.html" class="text-2xl md:text-3xl font-bold font-serif italic tracking-wide">B.BLING</a>
+          <span class="text-xs uppercase tracking-[0.18em] text-primary/70">Coffee &amp; Eatery</span>
+          <span class="text-xs px-3 py-1 rounded-full bg-accent text-white">0985.679.565</span>
+          <a href="tracking.html?mode=search" class="text-xs px-3 py-1 rounded-full bg-white text-primary border border-primary/20 shadow-soft hover:shadow-lg active:scale-95 transition">Tra cứu đơn</a>
+          <a href="admin-login.html" class="text-xs px-3 py-1 rounded-full bg-primary text-cream shadow-soft hover:shadow-lg active:scale-95 transition">Quản trị</a>
         </div>
       </div>
     </header>
 
-    <main class="px-4 pb-28 md:px-6">
-      <section class="mx-auto max-w-2xl">
+    <main class="px-3 pb-28 md:px-6">
+      <section class="mx-auto max-w-4xl">
         <div class="mb-4 flex items-center justify-between">
           <h2 class="font-serif italic text-xl">Menu</h2>
           <div class="text-xs text-primary/70">Vintage Minimalist • Live</div>
@@ -84,16 +84,19 @@
     </main>
 
     <div id="cart-bar" class="fixed bottom-3 inset-x-3 hidden">
-      <div class="mx-auto max-w-2xl">
+      <div class="mx-auto max-w-4xl">
         <div class="flex items-center justify-between rounded-xl bg-primary/90 backdrop-blur text-cream px-4 py-3 shadow-soft transition-opacity duration-300">
-          <div class="text-sm"><span class="opacity-90">Tổng:</span> <span id="cart-total" class="font-semibold"></span></div>
-          <button id="order-now" class="px-4 py-2 rounded-lg bg-accent text-white font-semibold hover:shadow-lg active:scale-95 transition">ORDER NOW</button>
+          <div class="text-sm flex items-center gap-2">
+            <span id="cart-count" class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-accent/80 text-white text-xs font-bold">0</span>
+            <span class="opacity-90">Tổng:</span> <span id="cart-total" class="font-semibold"></span>
+          </div>
+          <button id="order-now" class="px-4 py-2 rounded-lg bg-accent text-white font-semibold hover:shadow-lg active:scale-95 transition">Đặt món ngay</button>
         </div>
       </div>
     </div>
 
     <div id="sheet" class="fixed inset-x-0 bottom-0 translate-y-full transition-transform duration-300">
-      <div class="mx-auto max-w-2xl bg-white rounded-t-2xl shadow-soft p-4">
+      <div class="mx-auto max-w-4xl bg-white rounded-t-2xl shadow-soft p-4">
         <div class="flex items-center justify-between mb-2">
           <h3 class="font-serif italic text-lg">Xác nhận đơn</h3>
           <button id="close-sheet" class="text-primary/60 text-2xl leading-none hover:shadow-lg active:scale-95 transition">&times;</button>
@@ -195,7 +198,7 @@
   <footer class="px-4 pb-8 md:px-8"></footer>
 
   <script src="menu-store.js" defer></script>
-  <script src="app.js?v=20260301-2" defer></script>
-  <script src="chat.js?v=20260301-1" defer></script>
+  <script src="app.js?v=20260308-3" defer></script>
+  <script src="chat.js?v=20260307-8" defer></script>
 </body>
 </html>

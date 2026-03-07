@@ -53,27 +53,41 @@
         </div>
       </div>
 
+      <!-- Order summary accordion -->
+      <div class="mb-4 rounded-xl border border-primary/10 overflow-hidden">
+        <button id="order-summary-toggle" class="w-full flex items-center justify-between px-3 py-3 bg-cream/60 hover:bg-cream transition text-sm" type="button">
+          <span class="font-semibold">Đơn hàng: <span id="summary-count"></span></span>
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-accent" id="summary-total"></span>
+            <svg id="summary-chevron" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-primary/50 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </div>
+        </button>
+        <div id="order-summary-body" class="divide-y divide-primary/10 bg-white hidden">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
       <div class="mb-4 grid grid-cols-1 gap-3">
         <div>
           <div class="text-sm mb-2 font-semibold">Thông tin khách hàng</div>
           <div class="grid grid-cols-1 gap-2">
-            <input id="cust-name" class="rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Tên khách hàng *" />
-            <input id="cust-phone" class="rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Số điện thoại *" />
+            <input id="cust-name" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Tên khách hàng *" />
+            <input id="cust-phone" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Số điện thoại *" />
             <div>
               <div class="text-xs mb-1 text-primary/80">Địa điểm (tùy chọn)</div>
               <div class="grid grid-cols-1 gap-2">
-                <select id="loc-city" class="rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150">
+                <select id="loc-city" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150">
                   <option value="">Chọn Tỉnh/Thành phố</option>
                 </select>
-                <select id="loc-district" class="rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" disabled>
+                <select id="loc-district" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" disabled>
                   <option value="">Chọn Quận/Huyện</option>
                 </select>
-                <select id="loc-ward" class="rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" disabled>
+                <select id="loc-ward" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" disabled>
                   <option value="">Chọn Phường/Xã</option>
                 </select>
               </div>
             </div>
-            <input id="cust-address" class="rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Địa chỉ giao hàng (tối thiểu 5 ký tự) *" />
+            <input id="cust-address" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Địa chỉ giao hàng / số bàn (tối thiểu 5 ký tự) *" />
             <div id="err-name" class="hidden text-xs text-red-600">Vui lòng nhập tên.</div>
             <div id="err-phone" class="hidden text-xs text-red-600">Số điện thoại không hợp lệ (0xxxxxxxxx hoặc +84xxxxxxxxx).</div>
             <div id="err-address" class="hidden text-xs text-red-600">Vui lòng nhập địa chỉ/số bàn (tối thiểu 5 ký tự).</div>
@@ -82,41 +96,43 @@
         <div>
           <div class="text-sm mb-2 font-semibold">Hình thức thanh toán</div>
           <div class="flex items-center gap-2">
-            <button id="btn-cash" class="min-w-[120px] px-3 py-2 rounded-lg border border-primary/20 bg-white hover:shadow-lg">Tiền mặt</button>
-            <button id="btn-transfer" class="min-w-[120px] px-3 py-2 rounded-lg border border-primary/20 bg-white hover:shadow-lg">Chuyển khoản</button>
+            <button id="btn-cash" class="flex-1 px-3 py-3 min-h-[48px] rounded-xl border border-primary/20 bg-white hover:shadow-lg text-sm font-medium transition">💵 Tiền mặt</button>
+            <button id="btn-transfer" class="flex-1 px-3 py-3 min-h-[48px] rounded-xl border border-primary/20 bg-white hover:shadow-lg text-sm font-medium transition">🏦 Chuyển khoản</button>
           </div>
           <div id="err-method" class="hidden text-xs text-red-600 mt-1">Vui lòng chọn phương thức thanh toán.</div>
         </div>
       </div>
 
       <div id="section-transfer" class="hidden">
-        <div class="flex items-center justify-center mb-3">
-          <img id="qr" alt="VietQR" class="w-64 h-64 rounded-xl border border-primary/10 object-contain" />
+        <div class="flex flex-col items-center mb-3">
+          <img id="qr" alt="VietQR" class="w-full max-w-[260px] h-auto rounded-2xl border border-primary/10 object-contain shadow-soft" />
+          <p class="text-xs text-primary/60 mt-2 text-center">Quét mã bằng ứng dụng ngân hàng hoặc ví điện tử (Napas 24/7)</p>
         </div>
-        <p class="text-xs text-primary/70 mb-3 text-center">Mở ứng dụng Ngân hàng/ ví điện tử để quét mã Napas 24/7</p>
-        <div class="flex items-center gap-2">
-          <label id="receipt-upload-btn" class="px-3 py-2 rounded-lg bg-primary text-cream text-sm cursor-pointer hover:shadow-lg transition-shadow duration-150 active:scale-95">Tải ảnh biên lai
-            <input id="receipt" type="file" accept="image/jpeg,image/png" class="hidden" />
-          </label>
-          <div id="receipt-info" class="text-xs text-primary/70 flex-1"></div>
-        </div>
-        <div id="receipt-preview-container" class="hidden mt-3 flex items-start gap-3 rounded-lg bg-cream p-3">
-          <img id="receipt-preview" alt="" class="w-32 h-32 rounded-lg border border-primary/10 object-contain" />
-          <div class="flex-1 flex flex-col gap-2">
-            <div class="text-xs text-primary/70">
-              <div id="receipt-preview-name" class="font-medium mb-1"></div>
-              <div id="receipt-preview-size" class="text-primary/60 mb-1"></div>
-            </div>
-            <div class="flex gap-2">
-              <button id="receipt-change" class="px-2 py-1 text-xs rounded-lg bg-white border border-primary/20 text-primary hover:shadow-md transition-shadow duration-150 active:scale-95">Thay đổi</button>
-              <button id="receipt-delete" class="px-2 py-1 text-xs rounded-lg bg-red-100 text-red-700 hover:shadow-md transition-shadow duration-150 active:scale-95">Xoá</button>
+        <!-- Upload zone -->
+        <input id="receipt" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" />
+        <div id="receipt-preview-container" class="hidden">
+          <div class="relative rounded-2xl overflow-hidden border-2 border-success bg-cream">
+            <img id="receipt-preview" alt="" class="w-full max-h-52 object-contain" />
+            <div class="absolute top-2 right-2 flex gap-1.5">
+              <button id="receipt-change" class="px-2.5 py-1.5 text-xs rounded-lg bg-white/90 border border-primary/20 text-primary shadow active:scale-95">Đổi ảnh</button>
+              <button id="receipt-delete" class="px-2.5 py-1.5 text-xs rounded-lg bg-red-100/90 text-red-700 shadow active:scale-95">Xoá</button>
             </div>
           </div>
+          <div class="text-xs text-primary/50 mt-1 flex gap-2">
+            <span id="receipt-preview-name" class="font-medium truncate flex-1"></span>
+            <span id="receipt-preview-size"></span>
+          </div>
         </div>
-        <div id="err-receipt" class="hidden text-xs text-red-600 mt-1">Cần tải ảnh biên lai để tiến hành đặt đơn hàng.</div>
+        <label id="receipt-upload-btn" class="mt-2 flex flex-col items-center justify-center gap-2 w-full min-h-[80px] rounded-2xl border-2 border-dashed border-primary/25 bg-cream/50 cursor-pointer hover:border-accent hover:bg-cream transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-primary/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5V19a1.5 1.5 0 001.5 1.5h15A1.5 1.5 0 0021 19v-2.5M16 9l-4-4m0 0L8 9m4-4v12"/></svg>
+          <span class="text-sm text-primary/60">Tải lên ảnh biên lai chuyển khoản</span>
+          <span class="text-xs text-primary/40">JPEG · PNG · WebP · Tối đa 5MB</span>
+        </label>
+        <div id="receipt-info" class="hidden"></div>
+        <div id="err-receipt" class="hidden text-xs text-red-600 mt-1">Vui lòng tải ảnh biên lai để xác nhận thanh toán.</div>
       </div>
 
-      <button id="submit-order" class="mt-4 w-full py-3 rounded-xl bg-primary text-white font-semibold tracking-wider hover:shadow-lg transition-shadow duration-150 active:scale-95 flex items-center justify-center gap-2"><span id="submit-text">GỬI ĐƠN</span><span id="submit-spinner" class="hidden animate-spin">⟳</span></button>
+      <button id="submit-order" class="mt-5 w-full py-4 rounded-2xl bg-primary text-white font-semibold text-base tracking-wide hover:shadow-lg transition-all duration-150 active:scale-95 flex items-center justify-center gap-2 min-h-[56px]"><span id="submit-text">Gửi đơn hàng</span><span id="submit-spinner" class="hidden animate-spin">⟳</span></button>
 
       <div class="mt-3 text-center text-xs">
         Cần hỗ trợ hoặc gửi ảnh biên lai?
@@ -142,6 +158,40 @@
     function formatVND(v){ return Number(v).toLocaleString('vi-VN') + 'đ' }
     document.getElementById('bill').textContent = `#${bill}`
     document.getElementById('amount').textContent = formatVND(amount)
+
+    // --- Order summary accordion ---
+    ;(function initSummary() {
+      let saved = null
+      try { saved = JSON.parse(sessionStorage.getItem('order_' + bill) || 'null') } catch(e){}
+      const body = document.getElementById('order-summary-body')
+      const countEl = document.getElementById('summary-count')
+      const totalEl = document.getElementById('summary-total')
+      if (!saved || !saved.items || !saved.items.length) {
+        countEl.textContent = '(không có dữ liệu)'
+        return
+      }
+      const totalQty = saved.items.reduce((s, it) => s + it.qty, 0)
+      countEl.textContent = totalQty + ' món'
+      totalEl.textContent = formatVND(saved.totalK)
+      saved.items.forEach(function(it) {
+        const row = document.createElement('div')
+        row.className = 'flex items-center gap-3 px-3 py-2.5'
+        row.innerHTML = `
+          <img src="${it.img || ''}" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-primary/10" onerror="this.style.display='none'" />
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium truncate">${it.name}</div>
+            <div class="text-xs text-primary/50">${formatVND(it.priceK)} × ${it.qty}</div>
+          </div>
+          <div class="text-sm font-semibold text-accent flex-shrink-0">${formatVND(it.priceK * it.qty)}</div>
+        `
+        body.appendChild(row)
+      })
+      document.getElementById('order-summary-toggle').addEventListener('click', function() {
+        const isOpen = !body.classList.contains('hidden')
+        body.classList.toggle('hidden', isOpen)
+        document.getElementById('summary-chevron').style.transform = isOpen ? '' : 'rotate(180deg)'
+      })
+    })()
 
     const qrData = encodeURIComponent(`B.BLING|${bill}|${amount}|${content}`)
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${qrData}`
@@ -268,12 +318,17 @@
     }
     function showReceiptUI(f, src) {
       const container = document.getElementById('receipt-preview-container')
-      document.getElementById('receipt-info').textContent = ''
-      if (!f) { container.classList.add('hidden'); return }
+      const uploadBtn = document.getElementById('receipt-upload-btn')
+      if (!f) {
+        container.classList.add('hidden')
+        uploadBtn.classList.remove('hidden')
+        return
+      }
       document.getElementById('receipt-preview-name').textContent = f.name
-      document.getElementById('receipt-preview-size').textContent = '(' + (f.size / 1024).toFixed(1) + 'KB)'
+      document.getElementById('receipt-preview-size').textContent = '(' + (f.size / 1024).toFixed(1) + ' KB)'
       document.getElementById('receipt-preview').src = src
       container.classList.remove('hidden')
+      uploadBtn.classList.add('hidden')
     }
     receiptInput.addEventListener('change', (e) => {
       const f = e.target.files && e.target.files[0]
@@ -297,6 +352,7 @@
       textEl.textContent = text
       spinnerEl.classList.toggle('hidden', !isLoading)
     }
+
     submitBtn.addEventListener('click', async () => {
       const ok = validateAndShow()
       if (!ok) return

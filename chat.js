@@ -46,7 +46,7 @@
     const panel = document.createElement('div');
     panel.id = SELECTORS.panel;
     panel.className = 'hidden fixed right-6 bottom-28 w-[92%] max-w-[460px] rounded-2xl bg-white/95 backdrop-blur shadow-soft p-4 ring-1 ring-primary/10 z-50';
-    panel.innerHTML = '<div class="flex items-center justify-between mb-3 border-b border-primary/10 pb-2"><div class="flex items-center gap-3"><img id="chat-avatar" alt="B.BLING" class="w-9 h-9 rounded-full object-cover border border-primary/10" src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=96&q=60"/><div><div class="font-semibold text-sm">Hỗ trợ B.BLING</div><div class="text-[10px] text-success flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-success"></span>Đang trực tuyến</div></div></div><button id="chat-close" class="text-primary/60 text-xl leading-none hover:shadow-lg active:scale-95 transition">&times;</button></div><div id="chat-log" class="h-72 overflow-y-auto space-y-2 text-sm p-2 bg-cream rounded-xl"></div><div class="mt-3 flex items-center gap-2"><input id="chat-input" class="flex-1 rounded-xl border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn..."/><button id="chat-upload-btn" type="button" class="w-11 h-11 rounded-xl bg-primary text-cream flex items-center justify-center hover:shadow-lg transition" aria-label="Tải ảnh"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"w-5 h-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 7h4l2-3h6l2 3h4v12H3V7z\"/><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 17a4 4 0 100-8 4 4 0 000 8z\"/></svg></button><input id=\"chat-upload\" type=\"file\" accept=\"image/*\" class=\"hidden\"/><button id=\"chat-send\" class=\"px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm hover:shadow-lg transition\">Gửi</button></div>';
+    panel.innerHTML = '<div class="flex items-center justify-between mb-3 border-b border-primary/10 pb-2"><div class="flex items-center gap-3"><img id="chat-avatar" alt="B.BLING" class="w-9 h-9 rounded-full object-cover border border-primary/10" src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=96&q=60"/><div><div class="font-semibold text-sm">Hỗ trợ B.BLING</div><div class="text-[10px] text-success flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-success"></span>Đang trực tuyến</div></div></div><button id="chat-close" class="text-primary/60 text-xl leading-none hover:shadow-lg active:scale-95 transition">&times;</button></div><div id="chat-log" class="h-72 overflow-y-auto space-y-2 text-sm p-2 bg-cream rounded-xl"></div><div class="mt-3 flex items-center gap-2"><input id="chat-input" class="flex-1 rounded-xl border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/><button id="chat-upload-btn" type="button" class="w-11 h-11 rounded-xl bg-primary text-cream flex items-center justify-center hover:shadow-lg transition" aria-label="Tải ảnh"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"w-5 h-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 7h4l2-3h6l2 3h4v12H3V7z\"/><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 17a4 4 0 100-8 4 4 0 000 8z\"/></svg></button><input id=\"chat-upload\" type=\"file\" accept=\"image/*\" class=\"hidden\"/><button id=\"chat-send\" type=\"button\" class=\"px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm hover:shadow-lg transition\">Gửi</button></div>';
     panel.style.position = 'fixed';
     panel.style.right = '24px';
     panel.style.bottom = '120px';
@@ -99,8 +99,21 @@
       this.toggle.addEventListener('click', () => this.openOrToggle());
       this.closeBtn.addEventListener('click', () => this.hide());
       this.sendBtn.addEventListener('click', () => this.sendText());
+      // IME FIX (definitive): same macOS issue — 2nd keydown(Enter) auto-fired by IME after commit.
+      // _imeSent flag blocks the 2nd Enter within 200ms window.
       this.input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') this.sendText();
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (this._imeSent) {
+            this.input.value = '';
+            this._imeSent = false;
+            return;
+          }
+          this._imeSent = true;
+          setTimeout(() => { this._imeSent = false; this.input.value = ''; }, 200);
+          this.sendText();
+          this.input.value = '';
+        }
       });
       if (this.uploadBtn) this.uploadBtn.addEventListener('click', () => (this.upload || document.getElementById('chat-upload')).click());
       if (this.upload) this.upload.addEventListener('change', (e) => this.handleUpload(e));
@@ -126,11 +139,12 @@
       const collectionPath = this.isGuestMode ? 'guestChats' : 'orders';
       const docId = this.isGuestMode ? this.sessionId : this.orderId;
       
-      // Cleanup previous listener if exists
+      // Cleanup previous listener and reset dedup set
       if (this.messagesUnsub) {
         this.messagesUnsub();
         this.messagesUnsub = null;
       }
+      this._renderedMsgIds = new Set(); // always fresh on re-init
       
       // Initialize guest chat document if needed
       if (this.isGuestMode) {
@@ -144,33 +158,44 @@
       this.messagesUnsub = db.collection(collectionPath).doc(docId).collection('messages').orderBy('createdAt').onSnapshot((snap) => {
         snap.docChanges().forEach((ch) => {
           if (ch.type !== 'added') return;
+          
+          // Skip pending writes — wait for server confirmation to avoid double-render
+          if (ch.doc.metadata.hasPendingWrites) return;
+          
           const d = ch.doc.data();
           
-          // Only render messages from admin AND only new messages (after init)
-          if (d.from === 'admin') {
-            const msgTime = d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : 0;
-            // Skip old messages (before this session started)
-            if (msgTime > 0 && msgTime < this.lastProcessedTime) {
-              return;
-            }
-            
-            if (d.type === 'image') {
-              const wrap = document.createElement('div');
-              wrap.className = 'max-w-[80%] mr-auto';
-              const bubble = document.createElement('div');
-              bubble.className = 'bg-white px-3 py-2 rounded-2xl rounded-br-lg border border-primary/10 shadow-soft';
-              const img = document.createElement('img');
-              img.src = d.content;
-              img.className = 'max-h-32 rounded-md';
-              bubble.appendChild(img);
-              wrap.appendChild(bubble);
-              this.log.appendChild(wrap);
-            } else {
-              this.pushStoreText(d.content);
-            }
-            this.autoScroll();
+          // Deduplicate by Firestore doc ID
+          if (this._renderedMsgIds.has(ch.doc.id)) return;
+          
+          const msgTime = d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : 0;
+          
+          // Skip messages from before this session started (history)
+          if (msgTime > 0 && msgTime < this.lastProcessedTime) return;
+          
+          // Only render admin messages — customer messages are rendered locally in sendText()
+          if (d.from !== 'admin') return;
+          
+          this._renderedMsgIds.add(ch.doc.id);
+          
+          if (d.type === 'image') {
+            const wrap = document.createElement('div');
+            wrap.className = 'max-w-[80%] mr-auto';
+            const bubble = document.createElement('div');
+            bubble.className = 'bg-white px-3 py-2 rounded-2xl rounded-br-lg border border-primary/10 shadow-soft';
+            const img = document.createElement('img');
+            img.src = d.content;
+            img.className = 'max-h-32 rounded-md';
+            bubble.appendChild(img);
+            wrap.appendChild(bubble);
+            this.log.appendChild(wrap);
+          } else {
+            this.pushStoreText(d.content);
           }
+          this.autoScroll();
         });
+      }, (err) => {
+        console.error('[Chat] snapshot error:', err);
+        alert('[B.BLING Chat] Lỗi kết nối Firebase: ' + err.message);
       });
     }
 
@@ -241,8 +266,18 @@
 
     sendText() {
       const text = this.input.value.trim();
-      if (!text) return;
       this.input.value = '';
+      if (!text) return;
+      // Debounce: prevent double-call (e.g. Enter keydown + click fired together)
+      if (this._sending) return;
+      this._sending = true;
+      setTimeout(() => { this._sending = false; }, 600);
+      
+      // Always render customer message locally first (prevent double-render from snapshot)
+      const node = document.createTextNode(text);
+      const { status } = this.pushUserBubble(node, 'Đang gửi...');
+      console.debug('[Chat] sendText local render:', text, '| useFirebase:', this.useFirebase);
+      
       if (this.useFirebase) {
         const collectionPath = this.isGuestMode ? 'guestChats' : 'orders';
         const docId = this.isGuestMode ? this.sessionId : this.orderId;
@@ -258,11 +293,16 @@
         db.collection(collectionPath).doc(docId).collection('messages').add({
           from: 'customer', type: 'text', content: text,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).catch(() => alert('Gửi thất bại. Kiểm tra mạng.'));
+        }).then(() => {
+          status.textContent = 'Đã gửi';
+        }).catch(() => {
+          status.textContent = '❌ Thất bại';
+          alert('Gửi thất bại. Kiểm tra mạng.');
+        });
         return;
       }
-      const node = el('div', null, text);
-      const { status } = this.pushUserBubble(node, 'Đang gửi...');
+      
+      // Fallback for non-Firebase mode
       setTimeout(() => {
         status.textContent = 'Đã gửi';
         setTimeout(() => this.pushStoreText('Cảm ơn bạn! Nhân viên sẽ phản hồi sớm.'), 400);
@@ -278,6 +318,10 @@
         img.src = reader.result;
         img.className = 'max-h-32 rounded-md';
         img.addEventListener('error', () => img.removeAttribute('srcset'), { once: true });
+        
+        // Always render customer image locally first
+        const { status } = this.pushUserBubble(img.cloneNode(), 'Đang gửi...');
+        
         if (this.useFirebase) {
           const collectionPath = this.isGuestMode ? 'guestChats' : 'orders';
           const docId = this.isGuestMode ? this.sessionId : this.orderId;
@@ -293,9 +337,13 @@
           db.collection(collectionPath).doc(docId).collection('messages').add({
             from: 'customer', type: 'image', content: reader.result,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          }).catch(() => alert('Gửi ảnh thất bại.'));
+          }).then(() => {
+            status.textContent = 'Đã gửi';
+          }).catch(() => {
+            status.textContent = '❌ Thất bại';
+            alert('Gửi ảnh thất bại.');
+          });
         } else {
-          const { status } = this.pushUserBubble(img, 'Đang gửi...');
           setTimeout(() => {
             status.textContent = 'Đã gửi';
             setTimeout(() => this.pushStoreText('Đã nhận ảnh. Cảm ơn bạn!'), 500);
@@ -308,6 +356,9 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    // Singleton guard — prevent double-init if script somehow loads twice
+    if (window.__bbChatInit) return;
+    window.__bbChatInit = true;
     new ChatManager(document);
   });
 })();

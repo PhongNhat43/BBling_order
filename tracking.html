@@ -443,6 +443,56 @@
         showCopyToast()
       })
     })
+
+    // ── Telegram: gửi một lần khi đơn hàng mới được tạo ───────────────────
+    var TELEGRAM_BOT_TOKEN = '8260261042:AAEoLsdM72n9baHidYkALvR6ynnGNuMOcC4';
+    var TELEGRAM_CHAT_IDS  = [5861009440];
+
+    function sendTelegramOnce(oid) {
+      if (!oid || !TELEGRAM_BOT_TOKEN) return;
+      var db2 = window.bbDb || firebase.firestore();
+      db2.collection('orders').doc(oid).get().then(function(doc) {
+        if (!doc.exists || doc.data().isNotified === true) return;
+        var data = doc.data();
+        var customer = data.customer || {};
+        var methodLabel = data.method === 'cash' ? '💵 Tiền mặt' : '🏦 Chuyển khoản';
+        var totalFormatted = Number(data.totalVND).toLocaleString('vi-VN') + 'đ';
+        var itemLines = (data.items || []).map(function(i) {
+          return '  • ' + i.qty + ' x ' + i.name + ' (' + (i.priceK * 1000).toLocaleString('vi-VN') + 'đ/món)';
+        }).join('\n');
+        var adminUrl = location.origin + '/admin-dashboard.html';
+        var addrParts = [customer.address, customer.ward, customer.district, customer.city].filter(Boolean);
+        var addrLine = addrParts.length ? addrParts.join(', ') : '(chưa nhập)';
+        var text = [
+          '🔔 ĐƠN HÀNG MỚI: #' + oid,
+          '─'.repeat(26),
+          '👤 Khách hàng : ' + customer.name,
+          '📞 Điện thoại  : ' + customer.phone,
+          '📍 Địa chỉ       : ' + addrLine,
+          '💰 Tổng tiền   : ' + totalFormatted,
+          '💳 Thanh toán : ' + methodLabel,
+          '📦 Món đã đặt :',
+          itemLines,
+          '─'.repeat(26),
+          '🚀 Xem chi tiết: ' + adminUrl
+        ].join('\n');
+        // Đánh dấu trước khi gửi để tránh gửi lại khi F5
+        db2.collection('orders').doc(oid).update({ isNotified: true }).catch(function() {});
+        TELEGRAM_CHAT_IDS.forEach(function(chatId) {
+          fetch('https://api.telegram.org/bot' + TELEGRAM_BOT_TOKEN + '/sendMessage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: text })
+          }).catch(function() {});
+        });
+      }).catch(function() {});
+    }
+
+    // Chỉ kích hoạt khi đơn hàng vừa được tạo (không phải chế độ tìm kiếm)
+    if (orderId && mode !== 'search') {
+      sendTelegramOnce(orderId);
+    }
+    // ──────────────────────────────────────────────────────────────────────
   </script>
   <script src="chat.js?v=20260301-1" defer></script>
 </body>
