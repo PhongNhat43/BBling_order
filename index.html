@@ -1,10 +1,13 @@
 <!doctype html>
 <html lang="vi">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>B.BLING Coffee & Eatery</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Montserrat:wght@400;600&display=swap"
+    rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
@@ -29,45 +32,67 @@
     }
   </script>
   <style>
-    html, body { height: 100%; }
-    .paper {
-      background: radial-gradient(1000px 700px at 20% 10%, rgba(0,0,0,0.05), transparent 60%),
-                  radial-gradient(800px 600px at 80% 20%, rgba(0,0,0,0.04), transparent 60%),
-                  linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02));
+    html,
+    body {
+      height: 100%;
     }
-    .botanical:before, .botanical:after{
-      content:"";
+
+    .paper {
+      background: radial-gradient(1000px 700px at 20% 10%, rgba(0, 0, 0, 0.05), transparent 60%),
+        radial-gradient(800px 600px at 80% 20%, rgba(0, 0, 0, 0.04), transparent 60%),
+        linear-gradient(0deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.02));
+    }
+
+    .botanical:before,
+    .botanical:after {
+      content: "";
       position: absolute;
-      pointer-events:none;
-      inset:auto auto 0 0;
+      pointer-events: none;
+      inset: auto auto 0 0;
       width: 45%;
       height: 140px;
       background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width=\"800\" height=\"200\" viewBox=\"0 0 800 200\"><g fill=\"none\" stroke=\"%233E2723\" stroke-opacity=\"0.2\" stroke-width=\"2\"><path d=\"M10 190 C 50 150, 90 150, 120 190\"/><path d=\"M140 190 C 170 150, 210 150, 250 190\"/><path d=\"M270 190 C 300 150, 340 150, 380 190\"/><path d=\"M400 190 C 430 150, 470 150, 510 190\"/><path d=\"M530 190 C 560 150, 600 150, 640 190\"/><path d=\"M660 190 C 690 150, 730 150, 770 190\"/></g></svg>');
       background-size: contain;
       background-repeat: no-repeat;
       background-position: left bottom;
-      opacity:.8;
+      opacity: .8;
     }
-    .botanical:after{
-      inset:auto 0 0 auto;
+
+    .botanical:after {
+      inset: auto 0 0 auto;
       transform: scaleX(-1);
       background-position: right bottom;
     }
-    .shadow-soft { box-shadow: 0 6px 20px rgba(62,39,35,.12); }
-    .menu-item { contain: layout style paint; }
-    .modal-animated { will-change: transform, opacity; }
+
+    .shadow-soft {
+      box-shadow: 0 6px 20px rgba(62, 39, 35, .12);
+    }
+
+    .menu-item {
+      contain: layout style paint;
+    }
+
+    .modal-animated {
+      will-change: transform, opacity;
+    }
   </style>
 </head>
+
 <body class="min-h-full bg-cream text-primary font-sans paper">
   <div class="relative min-h-screen botanical">
-    <header class="sticky top-0 z-30 px-4 pt-6 pb-4 md:px-8">
+    <header id="main-header" class="sticky top-0 z-30 px-4 pt-6 pb-4 md:px-8 transition-transform duration-300">
       <div class="mx-auto max-w-2xl text-center">
-        <div class="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 px-4 py-2.5 rounded-2xl bg-white/70 backdrop-blur shadow-soft">
+        <div
+          class="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 px-4 py-2.5 rounded-2xl bg-white/70 backdrop-blur shadow-soft">
           <a href="index.html" class="text-2xl md:text-3xl font-bold font-serif italic tracking-wide">B.BLING</a>
           <span class="text-xs uppercase tracking-[0.18em] text-primary/70">Coffee &amp; Eatery</span>
           <span class="text-xs px-3 py-1 rounded-full bg-accent text-white">0985.679.565</span>
-          <a href="tracking.html?mode=search" class="text-xs px-3 py-1 rounded-full bg-white text-primary border border-primary/20 shadow-soft hover:shadow-lg active:scale-95 transition">Tra cứu đơn</a>
-          <a href="admin-login.html" class="text-xs px-3 py-1 rounded-full bg-primary text-cream shadow-soft hover:shadow-lg active:scale-95 transition">Quản trị</a>
+          <a href="tracking.html?mode=search"
+            class="text-xs px-3 py-1 rounded-full bg-white text-primary border border-primary/20 shadow-soft hover:shadow-lg active:scale-95 transition">Tra
+            cứu đơn</a>
+          <a href="admin-login.html"
+            class="text-xs px-3 py-1 rounded-full bg-primary text-cream shadow-soft hover:shadow-lg active:scale-95 transition">Quản
+            trị</a>
         </div>
       </div>
     </header>
@@ -75,7 +100,7 @@
     <main class="px-3 pb-28 md:px-6">
       <section class="mx-auto max-w-4xl">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="font-serif italic text-xl">Menu</h2>
+          <h2 class="font-serif italic text-3xl font-bold">Menu</h2>
           <div class="text-xs text-primary/70">Vintage Minimalist • Live</div>
         </div>
 
@@ -85,12 +110,16 @@
 
     <div id="cart-bar" class="fixed bottom-3 inset-x-3 hidden">
       <div class="mx-auto max-w-4xl">
-        <div class="flex items-center justify-between rounded-xl bg-primary/90 backdrop-blur text-cream px-4 py-3 shadow-soft transition-opacity duration-300">
+        <div
+          class="flex items-center justify-between rounded-xl bg-primary/90 backdrop-blur text-cream px-4 py-3 shadow-soft transition-opacity duration-300">
           <div class="text-sm flex items-center gap-2">
-            <span id="cart-count" class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-accent/80 text-white text-xs font-bold">0</span>
+            <span id="cart-count"
+              class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-accent/80 text-white text-xs font-bold">0</span>
             <span class="opacity-90">Tổng:</span> <span id="cart-total" class="font-semibold"></span>
           </div>
-          <button id="order-now" class="px-4 py-2 rounded-lg bg-accent text-white font-semibold hover:shadow-lg active:scale-95 transition">Đặt món ngay</button>
+          <button id="order-now"
+            class="px-4 py-2 rounded-lg bg-accent text-white font-semibold hover:shadow-lg active:scale-95 transition">Đặt
+            món ngay</button>
         </div>
       </div>
     </div>
@@ -99,32 +128,41 @@
       <div class="mx-auto max-w-4xl bg-white rounded-t-2xl shadow-soft p-4">
         <div class="flex items-center justify-between mb-2">
           <h3 class="font-serif italic text-lg">Xác nhận đơn</h3>
-          <button id="close-sheet" class="text-primary/60 text-2xl leading-none hover:shadow-lg active:scale-95 transition">&times;</button>
+          <button id="close-sheet"
+            class="text-primary/60 text-2xl leading-none hover:shadow-lg active:scale-95 transition">&times;</button>
         </div>
         <div id="sheet-list" class="divide-y divide-primary/10 max-h-60 overflow-y-auto"></div>
         <div class="mt-3">
           <label class="text-sm block mb-1">Ghi chú</label>
-          <textarea id="note" class="w-full rounded-lg border border-primary/20 p-3 outline-none focus:ring-2 focus:ring-accent/60"></textarea>
+          <textarea id="note"
+            class="w-full rounded-lg border border-primary/20 p-3 outline-none focus:ring-2 focus:ring-accent/60"></textarea>
         </div>
         <div class="mt-3 flex items-center justify-between">
           <div class="text-sm">Tổng cộng: <span id="sheet-total" class="font-semibold"></span></div>
-          <button id="confirm-order" class="px-4 py-2 rounded-lg bg-success text-white font-semibold hover:shadow-lg active:scale-95 transition">Xác nhận</button>
+          <button id="confirm-order"
+            class="px-4 py-2 rounded-lg bg-success text-white font-semibold hover:shadow-lg active:scale-95 transition">Xác
+            nhận</button>
         </div>
       </div>
     </div>
 
-    <button id="chat-toggle" class="fixed right-6 bottom-6 z-50 w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-soft hover:shadow-lg transition relative">
+    <button id="chat-toggle"
+      class="fixed right-4 bottom-20 z-50 w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-soft hover:shadow-lg transition relative">
       <span class="absolute inset-0 rounded-full">
         <span class="animate-ping absolute inset-0 rounded-full bg-accent opacity-30"></span>
       </span>
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 relative" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5m-1 6l3-3h3a4 4 0 004-4V7a4 4 0 00-4-4H7a4 4 0 00-4 4v6a4 4 0 004 4h4z"/>
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 relative" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M8 10h8M8 14h5m-1 6l3-3h3a4 4 0 004-4V7a4 4 0 00-4-4H7a4 4 0 00-4 4v6a4 4 0 004 4h4z" />
       </svg>
     </button>
-    <div id="chat-panel" class="hidden fixed right-6 bottom-28 w-[92%] max-w-[400px] rounded-xl bg-white shadow-soft p-4 z-50">
+    <div id="chat-panel"
+      class="hidden fixed right-6 bottom-28 w-[92%] max-w-[400px] rounded-xl bg-white shadow-soft p-4 z-50">
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-2">
-          <img id="chat-avatar" alt="B.BLING" class="w-8 h-8 rounded-full object-cover border border-primary/10" src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=96&q=60" />
+          <img id="chat-avatar" alt="B.BLING" class="w-8 h-8 rounded-full object-cover border border-primary/10"
+            src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=96&q=60" />
           <div>
             <div class="font-semibold text-sm">Hỗ trợ B.BLING</div>
             <div class="text-[10px] text-success flex items-center gap-1">
@@ -133,64 +171,92 @@
             </div>
           </div>
         </div>
-        <button id="chat-close" class="text-primary/60 text-xl leading-none hover:shadow-lg active:scale-95 transition">&times;</button>
+        <button id="chat-close"
+          class="text-primary/60 text-xl leading-none hover:shadow-lg active:scale-95 transition">&times;</button>
       </div>
       <div id="chat-log" class="h-64 overflow-y-auto space-y-2 text-sm p-2 bg-cream rounded-lg"></div>
       <div class="mt-2 flex items-center gap-2">
-        <input id="chat-input" class="flex-1 rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn..." />
-        <button id="chat-upload-btn" type="button" class="w-10 h-10 rounded-lg bg-primary text-cream flex items-center justify-center hover:shadow-lg transition" aria-label="Tải ảnh">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h4l2-3h6l2 3h4v12H3V7z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 17a4 4 0 100-8 4 4 0 000 8z"/>
+        <input id="chat-input"
+          class="flex-1 rounded-lg border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60"
+          placeholder="Nhập tin nhắn..." />
+        <button id="chat-upload-btn" type="button"
+          class="w-10 h-10 rounded-lg bg-primary text-cream flex items-center justify-center hover:shadow-lg transition"
+          aria-label="Tải ảnh">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h4l2-3h6l2 3h4v12H3V7z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 17a4 4 0 100-8 4 4 0 000 8z" />
           </svg>
         </button>
         <input id="chat-upload" type="file" accept="image/*" class="hidden" />
-        <button id="chat-send" class="px-3 py-2 rounded-lg bg-accent text-white text-sm hover:shadow-lg transition">Gửi</button>
+        <button id="chat-send"
+          class="px-3 py-2 rounded-lg bg-accent text-white text-sm hover:shadow-lg transition">Gửi</button>
       </div>
     </div>
   </div>
   <!-- Product Detail Modal -->
-  <div id="product-modal" class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300 modal-animated">
-    <div class="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-full transition-transform duration-300 w-full max-w-2xl modal-animated">
-      <div class="mx-3 mb-3 rounded-2xl bg-white shadow-soft overflow-hidden">
-        <div class="h-64 bg-gray-100">
+  <div id="product-modal"
+    class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300 modal-animated flex items-end justify-center">
+    <div
+      class="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-full transition-transform duration-300 w-full max-w-2xl modal-animated">
+      <div class="mx-3 mb-3 rounded-2xl bg-white shadow-soft flex flex-col max-h-[85vh]">
+
+        <!-- Fixed image + close overlay -->
+        <div class="h-56 bg-gray-100 flex-shrink-0 relative rounded-t-2xl overflow-hidden">
           <img id="modal-img" alt="" class="w-full h-full object-cover">
+          <button id="modal-close"
+            class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center text-xl leading-none hover:bg-black/60 active:scale-95 transition"
+            aria-label="Đóng">&times;</button>
         </div>
-        <div class="p-4 grid grid-cols-1 gap-3">
+
+        <!-- Scrollable content body -->
+        <div class="overflow-y-auto flex-1 p-4 grid grid-cols-1 gap-3">
           <div>
             <div id="modal-name" class="font-serif italic text-xl"></div>
             <div id="modal-price" class="text-sm text-primary/70"></div>
-            <div id="modal-desc" class="mt-1 text-sm"></div>
+            <div id="modal-desc" class="mt-1 text-sm text-primary/70"></div>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <div class="text-xs mb-1">Tùy chọn nhanh</div>
               <div class="flex flex-wrap gap-2">
-                <button data-opt="less-ice" class="opt px-3 py-1 rounded-full border border-primary/20 text-xs hover:shadow-lg active:scale-95 transition">Ít đá</button>
-                <button data-opt="more-sugar" class="opt px-3 py-1 rounded-full border border-primary/20 text-xs hover:shadow-lg active:scale-95 transition">Nhiều đường</button>
-                <button data-opt="no-sugar" class="opt px-3 py-1 rounded-full border border-primary/20 text-xs hover:shadow-lg active:scale-95 transition">Không đường</button>
+                <button data-opt="less-ice"
+                  class="opt px-3 py-1 rounded-full border border-primary/20 text-xs hover:shadow-lg active:scale-95 transition">Ít
+                  đá</button>
+                <button data-opt="more-sugar"
+                  class="opt px-3 py-1 rounded-full border border-primary/20 text-xs hover:shadow-lg active:scale-95 transition">Nhiều
+                  đường</button>
+                <button data-opt="no-sugar"
+                  class="opt px-3 py-1 rounded-full border border-primary/20 text-xs hover:shadow-lg active:scale-95 transition">Không
+                  đường</button>
               </div>
             </div>
             <div>
               <div class="text-xs mb-1">Số lượng</div>
               <div class="inline-flex items-center gap-2">
-                <button id="qty-dec" class="w-9 h-9 rounded-lg bg-primary/10 hover:shadow-lg active:scale-95 transition">-</button>
+                <button id="qty-dec"
+                  class="w-9 h-9 rounded-lg bg-primary/10 hover:shadow-lg active:scale-95 transition">-</button>
                 <div id="qty-val" class="w-8 text-center">1</div>
-                <button id="qty-inc" class="w-9 h-9 rounded-lg bg-primary text-cream hover:shadow-lg active:scale-95 transition">+</button>
+                <button id="qty-inc"
+                  class="w-9 h-9 rounded-lg bg-primary text-cream hover:shadow-lg active:scale-95 transition">+</button>
               </div>
             </div>
           </div>
           <div>
             <label class="text-xs block mb-1">Ghi chú</label>
-            <textarea id="modal-note" class="w-full rounded-lg border border-primary/20 p-3 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Ví dụ: ít đá, không topping..."></textarea>
-          </div>
-          <div>
-            <button id="modal-add" class="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:shadow-lg active:scale-95 transition">Thêm vào giỏ hàng</button>
+            <textarea id="modal-note"
+              class="w-full rounded-lg border border-primary/20 p-3 outline-none focus:ring-2 focus:ring-accent/60"
+              placeholder="Ví dụ: ít đá, không topping..."></textarea>
           </div>
         </div>
-      </div>
-      <div class="mx-3 mb-5 text-center">
-        <button id="modal-close" class="text-sm text-primary/70 underline underline-offset-4 hover:shadow-lg active:scale-95 transition">Đóng</button>
+
+        <!-- Sticky add-to-cart button -->
+        <div class="flex-shrink-0 px-4 pb-4 pt-3 border-t border-primary/10">
+          <button id="modal-add"
+            class="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:shadow-lg active:scale-95 transition">Thêm
+            vào giỏ hàng</button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -201,4 +267,5 @@
   <script src="app.js?v=20260308-3" defer></script>
   <script src="chat.js?v=20260307-8" defer></script>
 </body>
+
 </html>

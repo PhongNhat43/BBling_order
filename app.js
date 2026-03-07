@@ -102,6 +102,9 @@ function openProduct(id) {
   modalNote.value = '';
   updateModalAddText(item.priceK);
   lockScroll();
+  const header = document.getElementById('main-header');
+  // Only hide header on mobile (≤768px)
+  if (header && window.innerWidth <= 768) header.classList.add('-translate-y-full');
   modalEl.classList.remove('pointer-events-none');
   // Use a small delay to ensure DOM is ready before animation
   setTimeout(() => {
@@ -111,6 +114,9 @@ function openProduct(id) {
 }
 
 function closeProduct() {
+  const header = document.getElementById('main-header');
+  // Only restore header on mobile (≤768px)
+  if (header && window.innerWidth <= 768) header.classList.remove('-translate-y-full');
   modalEl.classList.remove('opacity-100');
   modalSheet.classList.add('translate-y-full');
   setTimeout(() => {
@@ -190,11 +196,15 @@ function syncCartUI() {
   const totalItems = Object.values(state.cart).reduce((s, it) => s + it.qty, 0);
   const countEl = document.getElementById('cart-count');
   if (countEl) countEl.textContent = String(totalItems);
+  const chatBtn = document.getElementById('chat-toggle');
   if (totalK > 0) {
     cartBar.classList.remove('hidden');
     cartTotal.textContent = formatVND(totalK);
+    // Lift chat icon above cart bar (only when using default position, not after drag)
+    if (chatBtn && !chatBtn.dataset.dragged) chatBtn.style.bottom = '80px';
   } else {
     cartBar.classList.add('hidden');
+    if (chatBtn && !chatBtn.dataset.dragged) chatBtn.style.bottom = '24px';
   }
 }
 
@@ -304,3 +314,67 @@ confirmOrder.addEventListener('click', () => {
 renderMenu();
 syncCartUI();
 window.addEventListener('bb-menu-updated', function () { renderMenu(); });
+
+// ── Draggable chat toggle ────────────────────────────────────────────────────
+(function () {
+  const btn = document.getElementById('chat-toggle');
+  if (!btn) return;
+  let dragging = false, moved = false;
+  let startX, startY, startBtnX, startBtnY;
+
+  function getPos(e) {
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX, y: t.clientY };
+  }
+
+  function onStart(e) {
+    const pos = getPos(e);
+    startX = pos.x; startY = pos.y;
+    const rect = btn.getBoundingClientRect();
+    startBtnX = rect.left; startBtnY = rect.top;
+    dragging = true; moved = false;
+  }
+
+  function onMove(e) {
+    if (!dragging) return;
+    const pos = getPos(e);
+    const dx = pos.x - startX, dy = pos.y - startY;
+    if (!moved && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+    moved = true;
+    e.preventDefault();
+    const W = window.innerWidth, H = window.innerHeight;
+    const bw = btn.offsetWidth, bh = btn.offsetHeight;
+    const newLeft = Math.max(8, Math.min(W - bw - 8, startBtnX + dx));
+    const newTop  = Math.max(8, Math.min(H - bh - 8, startBtnY + dy));
+    btn.style.left   = newLeft + 'px';
+    btn.style.top    = newTop  + 'px';
+    btn.style.right  = 'auto';
+    btn.style.bottom = 'auto';
+    btn.dataset.dragged = '1';
+  }
+
+  function onEnd(e) {
+    if (!dragging) return;
+    dragging = false;
+    if (!moved) return;
+    // Snap to nearest horizontal edge
+    const W = window.innerWidth;
+    const rect = btn.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    btn.style.left = (cx < W / 2 ? 8 : W - rect.width - 8) + 'px';
+    // Block the upcoming click
+    e.preventDefault();
+  }
+
+  btn.addEventListener('mousedown', onStart);
+  btn.addEventListener('touchstart', onStart, { passive: true });
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('mouseup', onEnd);
+  document.addEventListener('touchend', onEnd);
+
+  // Suppress click-to-open-chat when a drag just finished
+  btn.addEventListener('click', function (e) {
+    if (moved) { e.stopImmediatePropagation(); moved = false; }
+  }, true);
+})();
