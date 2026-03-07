@@ -10,6 +10,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -28,6 +30,10 @@
                   linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02));
     }
     .shadow-soft{ box-shadow: 0 6px 20px rgba(62,39,35,.12); }
+    /* Leaflet z-index fix */
+    #location-map { z-index: 0; }
+    .leaflet-pane, .leaflet-control { z-index: 1 !important; }
+    .leaflet-top, .leaflet-bottom { z-index: 2 !important; }
   </style>
 </head>
 <body class="min-h-full bg-cream text-primary font-sans paper">
@@ -76,24 +82,24 @@
           <div class="grid grid-cols-1 gap-2">
             <input id="cust-name" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Tên khách hàng *" />
             <input id="cust-phone" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Số điện thoại *" />
-            <div>
-              <div class="text-xs mb-1 text-primary/80">Địa điểm (tùy chọn)</div>
-              <div class="grid grid-cols-1 gap-2">
-                <select id="loc-city" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150">
-                  <option value="">Chọn Tỉnh/Thành phố</option>
-                </select>
-                <select id="loc-district" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" disabled>
-                  <option value="">Chọn Quận/Huyện</option>
-                </select>
-                <select id="loc-ward" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" disabled>
-                  <option value="">Chọn Phường/Xã</option>
-                </select>
-              </div>
+            <!-- Section 1: Địa chỉ nhận hàng (bắt buộc) -->
+            <div class="rounded-xl border border-primary/15 bg-cream/30 px-3 pt-2.5 pb-3">
+              <div class="text-xs font-semibold text-primary/70 mb-1.5">📮 Địa chỉ nhận hàng <span class="text-red-500">*</span></div>
+              <input id="cust-address" class="w-full rounded-lg border border-primary/20 bg-white p-2.5 text-sm min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Nhập địa chỉ giao hàng cụ thể..." />
+              <div id="err-address" class="hidden text-xs text-red-600 mt-1">Vui lòng nhập địa chỉ nhận hàng.</div>
             </div>
-            <input id="cust-address" class="rounded-lg border border-primary/20 p-3 min-h-[44px] outline-none focus:ring-2 focus:ring-accent/60 transition-all duration-150" placeholder="Địa chỉ giao hàng / số bàn (tối thiểu 5 ký tự) *" />
+            <!-- Section 2: Vị trí ghim bản đồ (tuỳ chọn) -->
+            <div class="rounded-xl border border-primary/15 bg-cream/30 px-3 pt-2.5 pb-3">
+              <div class="text-xs font-semibold text-primary/70 mb-0.5">📍 Vị trí giao hàng <span class="text-xs text-primary/40 font-normal">(Tuỳ chọn)</span></div>
+              <p class="text-xs text-primary/50 mb-2">Ghim vị trí để mở khoá thanh toán chuyển khoản (trong bán kính 2km từ quán)</p>
+              <button type="button" id="open-map-btn" class="w-full flex items-center justify-center gap-2 py-2.5 min-h-[44px] rounded-xl border-2 border-dashed border-accent/40 bg-accent/5 text-accent font-semibold text-sm hover:border-accent hover:bg-accent/10 active:scale-95 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span id="pin-btn-label">📍 Chọn vị trí trên bản đồ</span>
+              </button>
+              <div id="pinned-status" class="hidden mt-2 text-xs rounded-lg px-3 py-2"></div>
+            </div>
             <div id="err-name" class="hidden text-xs text-red-600">Vui lòng nhập tên.</div>
             <div id="err-phone" class="hidden text-xs text-red-600">Số điện thoại không hợp lệ (0xxxxxxxxx hoặc +84xxxxxxxxx).</div>
-            <div id="err-address" class="hidden text-xs text-red-600">Vui lòng nhập địa chỉ/số bàn (tối thiểu 5 ký tự).</div>
           </div>
         </div>
         <div>
@@ -101,6 +107,9 @@
           <div class="flex items-center gap-2">
             <button id="btn-cash" class="flex-1 px-3 py-3 min-h-[48px] rounded-xl border border-primary/20 bg-white hover:shadow-lg text-sm font-medium transition">💵 Tiền mặt</button>
             <button id="btn-transfer" class="flex-1 px-3 py-3 min-h-[48px] rounded-xl border border-primary/20 bg-white hover:shadow-lg text-sm font-medium transition">🏦 Chuyển khoản</button>
+          </div>
+          <div id="payment-restriction-notice" class="text-xs px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 mt-2">
+            ⚠️ Hãy ghím vị trí trên bản đồ để mở khóa thanh toán chuyển khoản.
           </div>
           <div id="err-method" class="hidden text-xs text-red-600 mt-1">Vui lòng chọn phương thức thanh toán.</div>
         </div>
@@ -257,45 +266,7 @@
     const errAddr = document.getElementById('err-address')
     const errMethod = document.getElementById('err-method')
     const errReceipt = document.getElementById('err-receipt')
-    // location selects (cập nhật theo yêu cầu: Bắc Ninh & Hà Nội)
-    const selCity = document.getElementById('loc-city')
-    const selDistrict = document.getElementById('loc-district')
-    const selWard = document.getElementById('loc-ward')
-    const locations = {
-      'Bắc Ninh': {
-        'Từ Sơn': ['Phường Đông Ngàn','Phường Đồng Kỵ','Phường Trang Hạ'],
-        'Tiên Du': ['Xã Tương Giang','Xã Hoàn Sơn','Xã Phật Tích'],
-        'Yên Phong': ['Xã Đông Tiến','Xã Yên Trung','Xã Long Châu']
-      },
-      'Hà Nội': {
-        'Đông Anh': ['Xã Uy Nỗ','Xã Hải Bối','Xã Vân Nội'],
-        'Gia Lâm': ['Xã Đặng Xá','Xã Dương Xá','Xã Kiêu Kỵ']
-      }
-    }
-    // populate city
-    Object.keys(locations).forEach(c=>{
-      const o=document.createElement('option'); o.value=c; o.textContent=c; selCity.appendChild(o);
-    })
-    selCity.addEventListener('change', ()=>{
-      selDistrict.innerHTML = '<option value=\"\">Chọn Quận/Huyện</option>'
-      selWard.innerHTML = '<option value=\"\">Chọn Phường/Xã</option>'
-      selWard.disabled = true
-      const c = selCity.value
-      if(!c){ selDistrict.disabled=true; return }
-      selDistrict.disabled=false
-      Object.keys(locations[c]).forEach(d=>{
-        const o=document.createElement('option'); o.value=d; o.textContent=d; selDistrict.appendChild(o);
-      })
-    })
-    selDistrict.addEventListener('change', ()=>{
-      selWard.innerHTML = '<option value=\"\">Chọn Phường/Xã</option>'
-      const c = selCity.value, d = selDistrict.value
-      if(!c || !d){ selWard.disabled=true; return }
-      selWard.disabled=false
-      locations[c][d].forEach(w=>{
-        const o=document.createElement('option'); o.value=w; o.textContent=w; selWard.appendChild(o);
-      })
-    })
+
 
     function isValidPhone(s){
       const v = (s||'').trim()
@@ -307,8 +278,7 @@
       const phoneOk = isValidPhone(phoneEl.value)
       const methodOk = method === 'cash' || method === 'transfer'
       const receiptOk = method !== 'transfer' || !!(receiptInput.files && receiptInput.files[0])
-      const addrVal = addrEl.value.trim()
-      const addrOk = addrVal.length >= 5
+      const addrOk = addrEl.value.trim().length > 0
       // show/hide
       errName.classList.toggle('hidden', nameOk)
       errPhone.classList.toggle('hidden', phoneOk)
@@ -317,25 +287,12 @@
       errReceipt.classList.toggle('hidden', receiptOk)
       return nameOk && phoneOk && methodOk && receiptOk && addrOk
     }
-    ;[nameEl, phoneEl, addrEl].forEach(el => el.addEventListener('input', validateAndShow))
+    ;[nameEl, phoneEl, addrEl].forEach(function(el) { el.addEventListener('input', validateAndShow) })
 
-    btnCash.addEventListener('click', () => {
-      method = 'cash'
-      sectionTransfer.classList.add('hidden')
-      btnCash.classList.add('bg-success','text-white','border-success','transition-all','duration-150')
-      btnCash.classList.remove('bg-white','text-primary')
-      btnTransfer.classList.remove('bg-success','text-white','border-success')
-      btnTransfer.classList.add('bg-white','text-primary','border-primary/20','transition-all','duration-150')
-      validateAndShow()
-    })
-    btnTransfer.addEventListener('click', () => {
-      method = 'transfer'
-      sectionTransfer.classList.remove('hidden')
-      btnTransfer.classList.add('bg-success','text-white','border-success','transition-all','duration-150')
-      btnTransfer.classList.remove('bg-white','text-primary')
-      btnCash.classList.remove('bg-success','text-white','border-success')
-      btnCash.classList.add('bg-white','text-primary','border-primary/20','transition-all','duration-150')
-      validateAndShow()
+    btnCash.addEventListener('click', function () { selectMethod('cash') })
+    btnTransfer.addEventListener('click', function () {
+      if (btnTransfer.disabled) return
+      selectMethod('transfer')
     })
     function handleReceiptFile(f) {
       if (!f) { showReceiptUI(null); validateAndShow(); return }
@@ -391,9 +348,8 @@
         name: nameEl.value.trim(),
         phone: phoneEl.value.trim(),
         address: addrEl.value.trim(),
-        city: selCity.value || '',
-        district: selDistrict.value || '',
-        ward: selWard.value || ''
+        lat: pinnedLat,
+        lng: pinnedLng
       }
       const status = method === 'cash' ? 'unverified_cash' : 'pending_transfer'
       let saved = null
@@ -468,7 +424,205 @@
       copyText('0985679565')
       showToast('Đã sao chép hotline', false)
     })
+
+    // ── Payment method helper ──────────────────────────────────────────────────
+    function selectMethod(m) {
+      method = m
+      if (m === 'cash') {
+        sectionTransfer.classList.add('hidden')
+        btnCash.classList.add('bg-success','text-white','border-success','transition-all','duration-150')
+        btnCash.classList.remove('bg-white','text-primary')
+        btnTransfer.classList.remove('bg-success','text-white','border-success')
+        btnTransfer.classList.add('bg-white','text-primary','border-primary/20','transition-all','duration-150')
+      } else {
+        sectionTransfer.classList.remove('hidden')
+        btnTransfer.classList.add('bg-success','text-white','border-success','transition-all','duration-150')
+        btnTransfer.classList.remove('bg-white','text-primary')
+        btnCash.classList.remove('bg-success','text-white','border-success')
+        btnCash.classList.add('bg-white','text-primary','border-primary/20','transition-all','duration-150')
+      }
+      validateAndShow()
+    }
+
+    // ── Location-based payment restriction ────────────────────────────────
+    var SHOP_LAT = 21.1184207, SHOP_LNG = 105.9669471
+    var pinnedDistKm = null
+    var leafletMap = null
+
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      var R = 6371, toR = Math.PI / 180
+      var dLat = (lat2 - lat1) * toR, dLon = (lon2 - lon1) * toR
+      var a = Math.sin(dLat/2)*Math.sin(dLat/2)
+            + Math.cos(lat1*toR)*Math.cos(lat2*toR)*Math.sin(dLon/2)*Math.sin(dLon/2)
+      return R * 2 * Math.asin(Math.sqrt(a))
+    }
+
+    function applyPaymentRestriction() {
+      var notice = document.getElementById('payment-restriction-notice')
+      var inRange = pinnedDistKm !== null && pinnedDistKm <= 2
+      if (inRange) {
+        btnTransfer.disabled = false
+        btnTransfer.classList.remove('opacity-40','cursor-not-allowed')
+        notice.innerHTML = '📍 Cách quán <strong>' + pinnedDistKm.toFixed(1) + 'km</strong> – Miễn phí giao hàng'
+        notice.className = 'text-xs px-3 py-2 rounded-lg bg-green-50 text-green-700 border border-green-200 mt-2'
+      } else {
+        btnTransfer.disabled = true
+        btnTransfer.classList.add('opacity-40','cursor-not-allowed')
+        var distTxt = pinnedDistKm !== null ? ' (' + pinnedDistKm.toFixed(1) + 'km)' : ''
+        notice.innerHTML = '⚠️ Ngoài phạm vi hỗ trợ thanh toán trước' + distTxt
+          + '. Vui lòng thanh toán tiền mặt khi nhận hàng hoặc liên hệ <strong>Hotline</strong>.'
+        notice.className = 'text-xs px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 mt-2'
+        if (method === 'transfer' || !method) selectMethod('cash')
+      }
+    }
+
+    // Pending (in-modal) state & confirmed state
+    var pendingLat = SHOP_LAT, pendingLng = SHOP_LNG, pendingAddress = ''
+    var pinnedLat = null, pinnedLng = null, pinnedAddress = null
+    var geocodeTimer = null
+
+    function reverseGeocode(lat, lng) {
+      clearTimeout(geocodeTimer)
+      geocodeTimer = setTimeout(function () {
+        var label = document.getElementById('map-coords-label')
+        var distKm = haversineKm(lat, lng, SHOP_LAT, SHOP_LNG)
+        var distTxt = distKm <= 2 ? '✓ Trong phạm vi 2km' : '⚠ Cách quán ' + distKm.toFixed(1) + 'km (ngoài 2km)'
+        if (label) label.textContent = distTxt + ' – đang tra địa chỉ...'
+        fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lng + '&format=json&accept-language=vi', {
+          headers: { 'Accept-Language': 'vi' }
+        })
+          .then(function (r) { return r.json() })
+          .then(function (data) {
+            var addr = ''
+            var a = data.address || {}
+            var parts = [a.road || a.pedestrian, a.suburb || a.neighbourhood || a.quarter, a.town || a.city_district || a.city || a.county].filter(Boolean)
+            addr = parts.length ? parts.join(', ') : (data.display_name || lat.toFixed(5) + ', ' + lng.toFixed(5))
+            pendingAddress = addr
+            if (label) label.textContent = distTxt + ' – ' + addr
+          })
+          .catch(function () {
+            pendingAddress = lat.toFixed(5) + ', ' + lng.toFixed(5)
+            if (label) label.textContent = distTxt + ' (' + pendingAddress + ')'
+          })
+      }, 700)
+    }
+
+    function updatePinDistance(lat, lng) {
+      pendingLat = lat
+      pendingLng = lng
+      pinnedDistKm = haversineKm(lat, lng, SHOP_LAT, SHOP_LNG)
+      reverseGeocode(lat, lng)
+    }
+
+    function initLeafletMap() {
+      if (leafletMap || !window.L) return
+      var startLat = pinnedLat !== null ? pinnedLat : SHOP_LAT
+      var startLng = pinnedLng !== null ? pinnedLng : SHOP_LNG
+      leafletMap = L.map('location-map').setView([startLat, startLng], 15)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors', maxZoom: 19
+      }).addTo(leafletMap)
+      // Shop marker
+      L.marker([SHOP_LAT, SHOP_LNG], {
+        icon: L.divIcon({
+          className: '',
+          html: '<div style="background:#3E2723;color:#F2E8DF;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.35)">☕ B.BLING</div>',
+          iconAnchor: [30, 10]
+        })
+      }).addTo(leafletMap)
+      // Draggable user marker (starts at previously pinned or shop location)
+      var userIcon = L.divIcon({
+        className: '',
+        html: '<div style="width:28px;height:28px;background:#C2410C;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 10px rgba(0,0,0,0.4);cursor:grab"></div>',
+        iconAnchor: [14, 14]
+      })
+      var userMarker = L.marker([startLat, startLng], { draggable: true, icon: userIcon }).addTo(leafletMap)
+      updatePinDistance(startLat, startLng)
+      userMarker.on('dragend', function () {
+        var p = userMarker.getLatLng()
+        updatePinDistance(p.lat, p.lng)
+      })
+      // Tap anywhere on map to move pin
+      leafletMap.on('click', function (e) {
+        userMarker.setLatLng(e.latlng)
+        updatePinDistance(e.latlng.lat, e.latlng.lng)
+      })
+      // Auto-locate on first open
+      if (navigator.geolocation && pinnedLat === null) {
+        navigator.geolocation.getCurrentPosition(function (pos) {
+          var lat = pos.coords.latitude, lng = pos.coords.longitude
+          userMarker.setLatLng([lat, lng])
+          leafletMap.setView([lat, lng], 16)
+          updatePinDistance(lat, lng)
+        }, function () {})
+      }
+    }
+
+    function openMapModal() {
+      document.getElementById('map-modal').classList.remove('hidden')
+      document.body.style.overflow = 'hidden'
+      setTimeout(function () {
+        if (!leafletMap) initLeafletMap()
+        else leafletMap.invalidateSize()
+      }, 80)
+    }
+
+    function closeMapModal() {
+      document.getElementById('map-modal').classList.add('hidden')
+      document.body.style.overflow = ''
+    }
+
+    function confirmLocation() {
+      if (!pendingAddress) {
+        // Geocode might still be loading — use coords as fallback
+        pendingAddress = pendingLat.toFixed(5) + ', ' + pendingLng.toFixed(5)
+      }
+      pinnedLat = pendingLat
+      pinnedLng = pendingLng
+      pinnedAddress = pendingAddress
+      // Update pin button style
+      var pinBtn = document.getElementById('open-map-btn')
+      var pinLabel = document.getElementById('pin-btn-label')
+      pinLabel.textContent = '🔄 Thay đổi vị trí'
+      pinBtn.className = 'w-full flex items-center justify-center gap-2 py-2.5 min-h-[44px] rounded-xl border-2 border-success bg-green-50 text-success font-semibold text-sm hover:bg-green-100 active:scale-95 transition'
+      // Show pinned status
+      var statusEl = document.getElementById('pinned-status')
+      var inRange = pinnedDistKm !== null && pinnedDistKm <= 2
+      var distTxt = pinnedDistKm !== null ? pinnedDistKm.toFixed(1) + 'km' : ''
+      statusEl.innerHTML = inRange
+        ? '✅ <strong>Trong phạm vi giao hàng</strong> – Cách quán ' + distTxt + '<br><span class="text-primary/60">' + pinnedAddress + '</span>'
+        : '⚠️ Cách quán <strong>' + distTxt + '</strong> (ngoài 2km) – Chỉ thanh toán tiền mặt<br><span class="text-primary/60">' + pinnedAddress + '</span>'
+      statusEl.className = 'mt-2 text-xs rounded-lg px-3 py-2 ' + (inRange ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700')
+      statusEl.classList.remove('hidden')
+      closeMapModal()
+      applyPaymentRestriction()
+      validateAndShow()
+    }
+
+    document.getElementById('open-map-btn').addEventListener('click', openMapModal)
+
+    // Initial state: no pin yet → restrict to cash
+    applyPaymentRestriction()
   </script>
+  <!-- Full-screen map modal -->
+  <div id="map-modal" class="hidden fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center" onclick="if(event.target===this)closeMapModal()">
+    <div class="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col" style="max-height:92vh">
+      <div class="flex items-center justify-between px-5 py-3.5 border-b border-primary/10 flex-shrink-0">
+        <div class="font-semibold text-sm">Chọn vị trí giao hàng</div>
+        <button id="close-map-modal" type="button" onclick="closeMapModal()" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-cream text-primary/60 text-2xl leading-none">&times;</button>
+      </div>
+      <div id="location-map" style="flex:1;min-height:360px"></div>
+      <div id="map-coords-label" class="px-4 py-2.5 text-xs text-primary/60 bg-cream/60 border-t border-primary/10 flex-shrink-0">
+        Kéo ghim đỏ để chọn vị trí của bạn
+      </div>
+      <div class="px-4 pb-6 pt-3 flex-shrink-0 bg-white">
+        <button id="confirm-location-btn" type="button" onclick="confirmLocation()" class="w-full py-3.5 min-h-[52px] rounded-2xl bg-primary text-white font-semibold text-sm hover:shadow-lg active:scale-95 transition">
+          ✓ Xác nhận vị trí này
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Image compression utilities for receipt upload -->
   <script src="image-utils.js" defer></script>
   <!-- Nạp chat.js để có thể mở box chat ngay tại trang này -->

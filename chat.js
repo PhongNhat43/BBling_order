@@ -159,9 +159,6 @@
         snap.docChanges().forEach((ch) => {
           if (ch.type !== 'added') return;
           
-          // Skip pending writes — wait for server confirmation to avoid double-render
-          if (ch.doc.metadata.hasPendingWrites) return;
-          
           const d = ch.doc.data();
           
           // Deduplicate by Firestore doc ID
@@ -283,11 +280,11 @@
         const docId = this.isGuestMode ? this.sessionId : this.orderId;
         const db = window.bbDb;
         
-        // Update lastMessageAt for guest chats
+        // Update lastMessageAt for guest chats (ensure doc exists first)
         if (this.isGuestMode) {
-          db.collection('guestChats').doc(docId).update({
+          db.collection('guestChats').doc(docId).set({
             lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
-          }).catch(() => {});
+          }, { merge: true }).catch(() => {});
         }
         
         db.collection(collectionPath).doc(docId).collection('messages').add({

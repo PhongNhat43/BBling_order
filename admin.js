@@ -4,7 +4,7 @@ const AdminState = (() => {
   const statusMap = {
     unverified_cash: { label: 'Chờ xác nhận (TM)', color: 'bg-amber-500/30 text-amber-200' },
     pending_transfer: { label: 'Chờ xác minh (CK)', color: 'bg-yellow-500/30 text-yellow-200' },
-    processing: { label: 'Đang pha chế', color: 'bg-blue-500/30 text-blue-200' },
+    processing: { label: 'Đang giao hàng', color: 'bg-blue-500/30 text-blue-200' },
     completed: { label: 'Hoàn thành', color: 'bg-green-500/30 text-green-200' },
     failed: { label: 'Thất bại', color: 'bg-red-500/30 text-red-200' },
     canceled: { label: 'Đã hủy', color: 'bg-gray-500/30 text-gray-400' }
@@ -29,13 +29,71 @@ const AdminState = (() => {
   function persistMenu(){ saveMenu(categories, items); if(useFirebase) persistMenuToFirebase(); }
   function vndK(k){ return (k*1000).toLocaleString('vi-VN')+' đ'; }
   function totalK(order){ return order.items.reduce((s,i)=>s+i.qty*i.priceK,0); }
-  function isNewOrder(createdAt){ 
-    const TEN_MINUTES = 10 * 60 * 1000; 
-    return (Date.now() - createdAt) < TEN_MINUTES; 
+  // Orders: NEW means not viewed by admin yet (not time-based)
+  // Guest chats: keep legacy time-based behavior by passing timestamp number.
+  function isNewOrder(orderOrTs){
+    if (orderOrTs && typeof orderOrTs === 'object') {
+      return !orderOrTs.viewedByAdmin;
+    }
+    const ts = Number(orderOrTs) || 0;
+    const TEN_MINUTES = 10 * 60 * 1000;
+    return (Date.now() - ts) < TEN_MINUTES;
+  }
+  function countNewOrders(){
+    return orders.filter(o => !o.viewedByAdmin).length;
+  }
+  function updateNewOrderBadge(){
+    const badge = qs('#new-order-badge');
+    const count = countNewOrders();
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = String(count);
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+  function countNewChats(){
+    return guestChats.filter(c => !c.viewedByAdmin).length;
+  }
+  function updateNewChatBadge(){
+    const badge = qs('#new-chat-badge');
+    const count = countNewChats();
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = String(count);
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+  function markChatViewed(chatId){
+    const chat = guestChats.find(c => c.id === chatId);
+    if (!chat || chat.viewedByAdmin) return;
+    chat.viewedByAdmin = true;
+    if (useFirebase) {
+      db.collection('guestChats').doc(chatId).update({ viewedByAdmin: true }).catch(function(err){
+        console.warn('Failed to mark chat viewed:', err);
+      });
+    }
+    renderThreads();
+    updateNewChatBadge();
+  }
+  function markOrderViewed(orderId){
+    const order = orders.find(o => o.id === orderId);
+    if (!order || order.viewedByAdmin) return;
+    order.viewedByAdmin = true;
+    if (useFirebase) {
+      db.collection('orders').doc(orderId).update({ viewedByAdmin: true }).catch(function(err){
+        console.warn('Failed to mark order viewed:', err);
+      });
+    }
+    renderOrders();
+    updateNewOrderBadge();
   }
   // ── Time formatting helpers ──────────────────────────────────────────────
   function _dayStart(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
-  // Relative time for sidebar (e.g. "vừa xong", "5 phút trước", "Hôm qua 14:32", "05/03 09:10")
+  // Relative time (e.g. "vừa xong", "5 phút trước", "2 giờ trước", "Hôm qua 14:32", "05/03 09:10")
   function relativeTime(ts){
     if (!ts) return '';
     const delta = Date.now() - ts;
@@ -43,8 +101,9 @@ const AdminState = (() => {
     const hm = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     if (delta < 60000) return 'vừa xong';
     if (delta < 3600000) return Math.floor(delta / 60000) + ' phút trước';
+    if (delta < 86400000) return Math.floor(delta / 3600000) + ' giờ trước';
     const now = new Date();
-    if (_dayStart(d) === _dayStart(now)) return hm;
+    if (_dayStart(d) === _dayStart(now)) return 'Hôm nay ' + hm;
     if (_dayStart(d) === _dayStart(now) - 86400000) return 'Hôm qua ' + hm;
     return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) + ' ' + hm;
   }
@@ -109,6 +168,7 @@ const AdminState = (() => {
       if (orders.length > lastOrderCount && lastOrderCount > 0) playTing();
       lastOrderCount = orders.length;
       renderOrders();
+      updateNewOrderBadge();
       renderThreads(); // sidebar only — do NOT call renderDetail() here (wipes active chat)
       renderReport();
     }, function () { if (qs('#admin-debug')) qs('#admin-debug').textContent = 'Mất kết nối Firebase'; });
@@ -125,6 +185,7 @@ const AdminState = (() => {
           sessionId: d.sessionId || doc.id,
           createdAt: d.createdAt && (d.createdAt.toMillis ? d.createdAt.toMillis() : d.createdAt) || ts,
           lastMessageAt: ts,
+          viewedByAdmin: d.viewedByAdmin || false,
           type: 'guest'
         };
       });
@@ -132,6 +193,7 @@ const AdminState = (() => {
       // renderDetail() wipes chat.innerHTML and resets the messages listener,
       // causing a full reload/jump every time lastMessageAt changes (e.g. on every reply).
       renderThreads();
+      updateNewChatBadge();
     }, function () { console.warn('Guest chats listener error'); });
   }
 
@@ -173,7 +235,7 @@ const AdminState = (() => {
       elP.style.display = pending ? '' : 'none';
     }
     if(elPr){
-      elPr.innerHTML = processing ? `<span class="text-[10px] opacity-70">Đang pha chế</span> <span class="font-bold text-base ml-1">${processing}</span>` : '';
+      elPr.innerHTML = processing ? `<span class="text-[10px] opacity-70">Đang giao hàng</span> <span class="font-bold text-base ml-1">${processing}</span>` : '';
       elPr.style.display = processing ? '' : 'none';
     }
     if(elC){
@@ -249,7 +311,7 @@ const AdminState = (() => {
     }
 
     pageItems.forEach(o=>{
-      const isNew = isNewOrder(o.createdAt);
+      const isNew = isNewOrder(o);
       const cardClasses = 'rounded-xl border p-4 cursor-pointer transition hover:shadow-lg ' + 
         (isNew ? 'border-accent/40 bg-accent/5 hover:bg-accent/10 shadow-accent/20 animate-pulse-subtle' : 'border-white/10 bg-gray-700 hover:bg-gray-600');
       const card = el('div', cardClasses);
@@ -258,7 +320,7 @@ const AdminState = (() => {
       const header = el('div','flex items-center justify-between mb-3 pb-2 border-b border-white/5');
       const orderId = el('div','flex items-center gap-2 flex-1 min-w-0');
       orderId.appendChild(el('span','text-base font-bold text-amber-300','#'+o.id));
-      orderId.appendChild(el('span','text-xs ml-1 font-medium '+(isNew?'text-amber-400':'text-gray-400'), new Date(o.createdAt).toLocaleString('vi-VN')));
+      orderId.appendChild(el('span','text-xs ml-1 font-medium '+(isNew?'text-amber-400':'text-gray-400'), relativeTime(o.createdAt)));
       
       const badges = el('div','flex items-center gap-1.5 flex-shrink-0');
       if(isNew){
@@ -302,7 +364,12 @@ const AdminState = (() => {
       body.appendChild(amountStatus);
       card.appendChild(body);
       
-      card.addEventListener('click', ()=>{ selectedId=o.id; showDetailModal(); });
+      card.addEventListener('click', ()=>{ 
+        selectedId=o.id;
+        selectedType='order';
+        markOrderViewed(o.id);
+        showDetailModal();
+      });
       root.appendChild(card);
     });
   }
@@ -339,14 +406,14 @@ const AdminState = (() => {
     const timeEl = qs('#modal-detail-time');
     if(timeEl) {
       const time = new Date(o.createdAt).toLocaleString('vi-VN');
-      const isNew = isNewOrder(o.createdAt);
+      const isNew = isNewOrder(o);
       timeEl.innerHTML = '';
       if(isNew){
         const newBadge = el('span','px-2 py-0.5 rounded-md text-[10px] font-bold bg-accent text-white mr-2 shadow-lg shadow-accent/50','✨ MỚI');
         timeEl.appendChild(newBadge);
       }
       const timeText = el('span', isNew ? 'text-amber-400 font-medium' : 'font-medium');
-      timeText.textContent = time;
+      timeText.textContent = time + ' · ' + relativeTime(o.createdAt);
       timeEl.appendChild(timeText);
     }
 
@@ -509,7 +576,19 @@ const AdminState = (() => {
         chat.innerHTML = '';
         let _lastRenderedDate = null; // tracks day for separator chips
         
-        messagesUnsub = db.collection(collectionPath).doc(selectedId).collection('messages').orderBy('createdAt').onSnapshot(function (snap) {
+        // Ensure document exists before setting up listener (critical for guest chats)
+        db.collection(collectionPath).doc(selectedId).get().then(function(docSnap) {
+          if (!docSnap.exists && selectedType === 'guest') {
+            // Create guest chat doc if missing (race condition: customer opened widget but hasn't sent message yet)
+            return db.collection('guestChats').doc(selectedId).set({
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+              sessionId: selectedId
+            }).then(() => docSnap);
+          }
+          return docSnap;
+        }).then(function() {
+          messagesUnsub = db.collection(collectionPath).doc(selectedId).collection('messages').orderBy('createdAt').onSnapshot(function (snap) {
           snap.docChanges().forEach(function (change) {
             if (change.type === 'added') {
               // Deduplicate by data-msg-id — prevents double render if snapshot re-fires
@@ -578,15 +657,19 @@ const AdminState = (() => {
               if (msgEl) msgEl.remove();
             }
           });
-        }, function(err) {
-          console.error('[Admin Chat] snapshot error:', err);
-          Toast.error('❌ Lỗi tải tin nhắn: ' + err.message);
+          }, function(err) {
+            console.error('[Admin Chat] snapshot error:', err);
+            Toast.error('❌ Lỗi tải tin nhắn: ' + err.message);
+          });
+          
+          // Initial scroll to bottom after messages load
+          setTimeout(function() {
+            if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
+          }, 400);
+        }).catch(function(err) {
+          console.error('[Admin Chat] doc check failed:', err);
+          Toast.error('❌ Không thể tải chat: ' + err.message);
         });
-        
-        // Initial scroll to bottom after messages load
-        setTimeout(function() {
-          if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
-        }, 400);
 
       } else {
         // Non-Firebase fallback
@@ -629,7 +712,7 @@ const AdminState = (() => {
 
     sorted.forEach(g => {
       const isSelected = g.id === selectedId && selectedType === 'guest';
-      const isNew = isNewOrder(g.lastMessageAt || g.createdAt);
+      const isNew = !g.viewedByAdmin;
       
       const row = el('div','thread-item flex items-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer ' + (isSelected ? 'active' : 'border border-transparent'));
       
@@ -671,6 +754,7 @@ const AdminState = (() => {
       row.addEventListener('click', () => {
         selectedId = g.id;
         selectedType = 'guest';
+        markChatViewed(g.id);
         renderThreads();
         renderDetail();
       });
@@ -1400,10 +1484,14 @@ const AdminState = (() => {
         setupOrdersListener();
         setupGuestChatsListener();
         renderReport();
+        updateNewOrderBadge();
       });
     } else {
       renderCategories(); renderItems();
       renderOrders(); renderThreads(); renderReport();
+      updateNewOrderBadge();
+      updateNewChatBadge();
+      updateNewOrderBadge();
     }
     const dbg = document.getElementById('admin-debug');
     if (dbg) dbg.textContent = useFirebase ? 'Firebase • v20260302-1' : orders.length + ' đơn • v20260302-1';

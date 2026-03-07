@@ -200,11 +200,8 @@ function syncCartUI() {
   if (totalK > 0) {
     cartBar.classList.remove('hidden');
     cartTotal.textContent = formatVND(totalK);
-    // Lift chat icon above cart bar (only when using default position, not after drag)
-    if (chatBtn && !chatBtn.dataset.dragged) chatBtn.style.bottom = '80px';
   } else {
     cartBar.classList.add('hidden');
-    if (chatBtn && !chatBtn.dataset.dragged) chatBtn.style.bottom = '24px';
   }
 }
 
@@ -317,63 +314,77 @@ window.addEventListener('bb-menu-updated', function () { renderMenu(); });
 
 // ── Draggable chat toggle ────────────────────────────────────────────────────
 (function () {
-  const btn = document.getElementById('chat-toggle');
+  var btn = document.getElementById('chat-toggle');
   if (!btn) return;
-  let dragging = false, moved = false;
-  let startX, startY, startBtnX, startBtnY;
 
-  function getPos(e) {
-    const t = e.touches ? e.touches[0] : e;
-    return { x: t.clientX, y: t.clientY };
-  }
+  var dragging = false, moved = false;
+  var ox, oy, bx, by;
 
-  function onStart(e) {
-    const pos = getPos(e);
-    startX = pos.x; startY = pos.y;
-    const rect = btn.getBoundingClientRect();
-    startBtnX = rect.left; startBtnY = rect.top;
-    dragging = true; moved = false;
-  }
-
-  function onMove(e) {
-    if (!dragging) return;
-    const pos = getPos(e);
-    const dx = pos.x - startX, dy = pos.y - startY;
-    if (!moved && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
-    moved = true;
-    e.preventDefault();
-    const W = window.innerWidth, H = window.innerHeight;
-    const bw = btn.offsetWidth, bh = btn.offsetHeight;
-    const newLeft = Math.max(8, Math.min(W - bw - 8, startBtnX + dx));
-    const newTop  = Math.max(8, Math.min(H - bh - 8, startBtnY + dy));
-    btn.style.left   = newLeft + 'px';
-    btn.style.top    = newTop  + 'px';
+  function pointerStart(cx, cy) {
+    // Always read live rendered position — never trust btn.style.left/top
+    var r = btn.getBoundingClientRect();
+    bx = r.left;
+    by = r.top;
+    // Lock position to left/top so future style writes work
+    btn.style.position = 'fixed';
+    btn.style.left   = bx + 'px';
+    btn.style.top    = by + 'px';
     btn.style.right  = 'auto';
     btn.style.bottom = 'auto';
+    ox = cx; oy = cy;
+    dragging = true; moved = false;
+    btn.style.transition = 'none';
+  }
+
+  function pointerMove(cx, cy) {
+    if (!dragging) return;
+    var dx = cx - ox, dy = cy - oy;
+    if (!moved && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+    moved = true;
+    var W = window.innerWidth, H = window.innerHeight;
+    var bw = btn.offsetWidth, bh = btn.offsetHeight;
+    btn.style.left = Math.max(8, Math.min(W - bw - 8, bx + dx)) + 'px';
+    btn.style.top  = Math.max(8, Math.min(H - bh - 8, by + dy)) + 'px';
     btn.dataset.dragged = '1';
   }
 
-  function onEnd(e) {
+  function pointerEnd() {
     if (!dragging) return;
     dragging = false;
+    btn.style.transition = 'left 0.2s, top 0.2s, box-shadow 0.2s';
     if (!moved) return;
     // Snap to nearest horizontal edge
-    const W = window.innerWidth;
-    const rect = btn.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    btn.style.left = (cx < W / 2 ? 8 : W - rect.width - 8) + 'px';
-    // Block the upcoming click
-    e.preventDefault();
+    var W = window.innerWidth, bw = btn.offsetWidth;
+    var cur = parseFloat(btn.style.left) + bw / 2;
+    btn.style.left = (cur < W / 2 ? 8 : W - bw - 8) + 'px';
   }
 
-  btn.addEventListener('mousedown', onStart);
-  btn.addEventListener('touchstart', onStart, { passive: true });
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('touchmove', onMove, { passive: false });
-  document.addEventListener('mouseup', onEnd);
-  document.addEventListener('touchend', onEnd);
+  // Mouse
+  btn.addEventListener('mousedown', function (e) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    pointerStart(e.clientX, e.clientY);
+  });
+  document.addEventListener('mousemove', function (e) {
+    if (dragging) pointerMove(e.clientX, e.clientY);
+  });
+  document.addEventListener('mouseup', function () {
+    if (dragging) pointerEnd();
+  });
 
-  // Suppress click-to-open-chat when a drag just finished
+  // Touch
+  btn.addEventListener('touchstart', function (e) {
+    pointerStart(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  document.addEventListener('touchmove', function (e) {
+    if (dragging && moved) e.preventDefault();
+    if (dragging) pointerMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+  document.addEventListener('touchend', function () {
+    if (dragging) pointerEnd();
+  });
+
+  // Block click when drag just finished
   btn.addEventListener('click', function (e) {
     if (moved) { e.stopImmediatePropagation(); moved = false; }
   }, true);

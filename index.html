@@ -41,6 +41,7 @@
       background: radial-gradient(1000px 700px at 20% 10%, rgba(0, 0, 0, 0.05), transparent 60%),
         radial-gradient(800px 600px at 80% 20%, rgba(0, 0, 0, 0.04), transparent 60%),
         linear-gradient(0deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.02));
+      background-attachment: fixed;
     }
 
     .botanical:before,
@@ -74,6 +75,25 @@
 
     .modal-animated {
       will-change: transform, opacity;
+    }
+
+    /* ── Product modal: Desktop layout ───────────────────────────────────────
+       On md+ screens, anchor the sheet near the top (below header) instead of
+       at the bottom. The translate-y-full class is flipped to slide UP off-screen
+       when closed, so the animation remains smooth without any JS changes.
+    ──────────────────────────────────────────────────────────────────────── */
+    @media (min-width: 768px) {
+      #product-modal>div.absolute {
+        top: 9rem;
+        /* ~80px below a typical 64px sticky header */
+        bottom: auto;
+      }
+
+      /* When Tailwind adds translate-y-full (closed state), override to slide
+         the modal UP above the viewport instead of DOWN below it. */
+      #product-modal>div.translate-y-full {
+        transform: translateX(-50%) translateY(-110%) !important;
+      }
     }
   </style>
 </head>
@@ -147,7 +167,8 @@
     </div>
 
     <button id="chat-toggle"
-      class="fixed right-4 bottom-20 z-50 w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-soft hover:shadow-lg transition relative">
+      class="fixed z-50 w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-soft transition-shadow relative"
+      style="right:16px;bottom:24px">
       <span class="absolute inset-0 rounded-full">
         <span class="animate-ping absolute inset-0 rounded-full bg-accent opacity-30"></span>
       </span>
