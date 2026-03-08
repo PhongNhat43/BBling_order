@@ -287,7 +287,6 @@ const AdminState = (() => {
 
       newMessages.forEach(function (m) {
         NotifMgr.push('chat', '💬 Tin nhắn mới từ ' + m.label, 'Khách vừa gửi tin nhắn', m.id);
-        TelegramNotif.send('💬 <b>Tin nhắn mới</b> từ <b>' + m.label + '</b>\nKhách vừa gửi tin nhắn qua chat');
       });
 
       // Only update sidebar — do NOT call renderDetail() here.
@@ -890,6 +889,52 @@ const AdminState = (() => {
         Toast.error('❌ Xóa thất bại: ' + err.message);
       });
   }
+
+  function deleteOrder(orderId) {
+    if (!orderId) return;
+
+    if (!useFirebase) {
+      orders = orders.filter(o => o.id !== orderId);
+      if (selectedId === orderId && selectedType === 'order') {
+        selectedId = null;
+        selectedType = null;
+      }
+      const modal = qs('#order-detail-modal');
+      if (modal) { modal.style.display = 'none'; modal.classList.add('hidden'); }
+      renderOrders();
+      renderThreads();
+      renderReport();
+      updateNewOrderBadge();
+      Toast.success('✓ Đã xóa đơn hàng');
+      return;
+    }
+
+    // Delete messages sub-collection first, then delete the order doc.
+    db.collection('orders').doc(orderId).collection('messages').get()
+      .then(snapshot => {
+        if (!snapshot.docs.length) return null;
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        return batch.commit();
+      })
+      .then(() => {
+        return db.collection('orders').doc(orderId).delete();
+      })
+      .then(() => {
+        const modal = qs('#order-detail-modal');
+        if (modal) { modal.style.display = 'none'; modal.classList.add('hidden'); }
+        if (selectedId === orderId && selectedType === 'order') {
+          selectedId = null;
+          selectedType = null;
+        }
+        Toast.success('✓ Đã xóa đơn hàng');
+      })
+      .catch(err => {
+        Toast.error('❌ Xóa đơn thất bại: ' + err.message);
+      });
+  }
   
   function updateStatus(id, status){
     const o = orders.find(x=>x.id===id); if(!o) return;
@@ -941,12 +986,17 @@ const AdminState = (() => {
     pageNext&&pageNext.addEventListener('click', ()=>{ currentPage++; renderOrders(); });
     
     // Modal buttons
-    const ap=qs('#modal-btn-approve'), dn=qs('#modal-btn-done'), cc=qs('#modal-btn-cancel'), ff=qs('#modal-btn-fail');
+    const ap=qs('#modal-btn-approve'), dn=qs('#modal-btn-done'), cc=qs('#modal-btn-cancel'), ff=qs('#modal-btn-fail'), del=qs('#modal-btn-delete');
     const doneClose = qs('#modal-detail-close'), modal = qs('#order-detail-modal');
     ap&&ap.addEventListener('click', ()=>{ if(selectedId){ updateStatus(selectedId,'processing'); }});
     dn&&dn.addEventListener('click', ()=>{ if(selectedId){ updateStatus(selectedId,'completed'); }});
     cc&&cc.addEventListener('click', ()=>{ if(selectedId){ updateStatus(selectedId,'canceled'); }});
     ff&&ff.addEventListener('click', ()=>{ if(selectedId){ updateStatus(selectedId,'failed'); }});
+    del&&del.addEventListener('click', ()=>{
+      if(!selectedId) return;
+      if(!confirm('Xóa đơn hàng này khỏi hệ thống?\n\nLưu ý: Không thể khôi phục!')) return;
+      deleteOrder(selectedId);
+    });
     if(doneClose){
       doneClose.addEventListener('click', (e)=>{ 
         e.preventDefault();
