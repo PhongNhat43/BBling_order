@@ -679,18 +679,9 @@ const AdminState = (() => {
         chat.innerHTML = '';
         let _lastRenderedDate = null; // tracks day for separator chips
         
-        // Ensure document exists before setting up listener (critical for guest chats)
-        db.collection(collectionPath).doc(activeSelectedId).get().then(function(docSnap) {
-          if (!docSnap.exists && activeSelectedType === 'guest') {
-            // Create guest chat doc if missing (race condition: customer opened widget but hasn't sent message yet)
-            return db.collection('guestChats').doc(activeSelectedId).set({
-              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-              lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
-              sessionId: activeSelectedId
-            }).then(() => docSnap);
-          }
-          return docSnap;
-        }).then(function() {
+        // Do NOT auto-create guest chat docs from admin side.
+        // A guest chat should exist only after the customer sends the first message.
+        Promise.resolve().then(function() {
           // Ignore stale async callback when user has already switched to another thread.
           if (selectedId !== activeSelectedId || selectedType !== activeSelectedType) return;
           // Cancel any previous listener (safety guard for rapid re-renders of the same thread)
@@ -1008,9 +999,9 @@ const AdminState = (() => {
         }).then(() => {
           // Update lastMessageAt for guest chats
           if (selectedType === 'guest') {
-            db.collection('guestChats').doc(selectedId).set({
+            db.collection('guestChats').doc(selectedId).update({
               lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true }).catch(() => {});
+            }).catch(() => {});
           }
         }).catch(function(){ Toast.error('❌ Gửi tin nhắn thất bại'); });
       } else {
@@ -1030,9 +1021,9 @@ const AdminState = (() => {
           }).then(() => {
             // Update lastMessageAt for guest chats
             if (selectedType === 'guest') {
-              db.collection('guestChats').doc(selectedId).set({
+              db.collection('guestChats').doc(selectedId).update({
                 lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
-              }, { merge: true }).catch(() => {});
+              }).catch(() => {});
             }
           }).catch(function(){ Toast.error('❌ Gửi ảnh thất bại'); });
         } else {
@@ -1058,9 +1049,9 @@ const AdminState = (() => {
         }).then(() => {
           // Update lastMessageAt for guest chats
           if (selectedType === 'guest') {
-            db.collection('guestChats').doc(selectedId).set({
+            db.collection('guestChats').doc(selectedId).update({
               lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true }).catch(() => {});
+            }).catch(() => {});
           }
         }).catch(function(){ alert('Gửi thất bại.'); });
       } else {
