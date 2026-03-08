@@ -309,10 +309,59 @@
         })
       })()
 
-    const qrData = encodeURIComponent(`B.BLING|${bill}|${amount}|${content}`)
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${qrData}`
     const qrImg = document.getElementById('qr')
-    if (qrImg) qrImg.src = qrUrl
+    const qrLoadingMsg = document.createElement('div')
+    qrLoadingMsg.className = 'text-xs text-primary/50 text-center mt-2'
+    qrLoadingMsg.textContent = 'Đang tải mã QR...'
+    if (qrImg) qrImg.insertAdjacentElement('afterend', qrLoadingMsg)
+
+    // Fetch VietQR config from Firestore settings/payment_config
+    function applyVietQR(cfg) {
+      if (!qrImg) return
+      if (!cfg || !cfg.enabled || !cfg.bankCode || !cfg.accountNo) {
+        // Config missing or disabled — hide QR, show notice
+        qrImg.closest && qrImg.closest('.flex') && qrImg.closest('.flex').classList.add('hidden')
+        qrLoadingMsg.textContent = '⚠️ Chưa cấu hình thanh toán chuyển khoản. Liên hệ hotline.'
+        qrLoadingMsg.className = 'text-xs text-amber-700 text-center mt-2'
+        // Disable transfer button entirely
+        if (btnTransfer) {
+          btnTransfer.disabled = true
+          btnTransfer.classList.add('opacity-40', 'cursor-not-allowed')
+        }
+        return
+      }
+      var addInfo = encodeURIComponent(content)
+      var accName = encodeURIComponent((cfg.accountName || '').trim())
+      var qrUrl = 'https://img.vietqr.io/image/'
+        + cfg.bankCode.toUpperCase() + '-'
+        + cfg.accountNo.trim()
+        + '-compact2.png'
+        + '?amount=' + amount
+        + '&addInfo=' + addInfo
+        + (accName ? '&accountName=' + accName : '')
+      qrImg.src = qrUrl
+      qrImg.onload = function() { qrLoadingMsg.remove() }
+      qrImg.onerror = function() {
+        qrLoadingMsg.textContent = '⚠️ Không tải được mã QR. Nhập STK thủ công hoặc liên hệ hotline.'
+        qrLoadingMsg.className = 'text-xs text-red-600 text-center mt-2'
+      }
+    }
+
+    // Load config — requires bbDb (Firebase) to be ready
+    function loadBankConfig() {
+      if (!window.bbDb) {
+        // bbDb not ready yet — retry after short delay
+        setTimeout(loadBankConfig, 300)
+        return
+      }
+      window.bbDb.collection('settings').doc('payment_config').get()
+        .then(function(doc) { applyVietQR(doc.exists ? doc.data() : null) })
+        .catch(function() {
+          qrLoadingMsg.textContent = '⚠️ Không thể tải cấu hình QR. Kiểm tra kết nối mạng.'
+          qrLoadingMsg.className = 'text-xs text-red-600 text-center mt-2'
+        })
+    }
+    loadBankConfig()
 
     const copyToast = document.createElement('div')
     copyToast.className = 'fixed left-1/2 -translate-x-1/2 bottom-6 px-3 py-2 rounded-lg bg-success text-white text-xs shadow-soft hidden'
@@ -476,7 +525,7 @@
       e.preventDefault()
       if (!document.getElementById('chat-toggle')) {
         const s = document.createElement('script')
-        s.src = 'chat.js?v=20260305-1'
+        s.src = 'chat.js?v=20260308-5'
         s.defer = true
         s.onerror = () => { showToast('Không thể tải chat. Kiểm tra kết nối mạng.', true) }
         document.body.appendChild(s)

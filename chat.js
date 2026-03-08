@@ -48,7 +48,7 @@
         var saved = localStorage.getItem('bb_chat_btn_pos');
         console.log('[CHAT] Checking localStorage - saved:', saved);
         if (saved) savedPos = JSON.parse(saved);
-      } catch(e) {
+      } catch (e) {
         console.error('[CHAT] localStorage read error:', e);
       }
       if (savedPos) {
@@ -177,16 +177,8 @@
       }
       this._renderedMsgIds = new Set(); // always fresh on re-init
 
-      // Initialize guest chat document if needed
-      if (this.isGuestMode) {
-        const guestLabel = 'Khach ' + docId.slice(-6).toUpperCase();
-        db.collection('guestChats').doc(docId).set({
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
-          sessionId: docId,
-          guestLabel: guestLabel
-        }, { merge: true }).catch(e => console.warn('Init guest chat failed:', e));
-      }
+      // NOTE: guestChat document is created only when the first message is sent (sendText/handleUpload).
+      // We do NOT initialize it here to avoid creating phantom entries for visitors who never chat.
 
       this.messagesUnsub = db.collection(collectionPath).doc(docId).collection('messages').orderBy('createdAt').onSnapshot((snap) => {
         snap.docChanges().forEach((ch) => {
@@ -313,11 +305,21 @@
         const docId = this.isGuestMode ? this.sessionId : this.orderId;
         const db = window.bbDb;
 
-        // Update lastMessageAt for guest chats (ensure doc exists first)
+        // Upsert parent doc: update-only if it already exists (preserves original createdAt),
+        // create with full fields (including createdAt) only if this is the first message ever.
         if (this.isGuestMode) {
-          db.collection('guestChats').doc(docId).set({
+          const _docRef = db.collection('guestChats').doc(docId);
+          _docRef.update({
             lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true }).catch(() => { });
+          }).catch(() => {
+            // Document doesn't exist yet — create it now with a stable createdAt
+            _docRef.set({
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+              sessionId: docId,
+              guestLabel: 'Khach ' + docId.slice(-6).toUpperCase()
+            }).catch(() => {});
+          });
         }
 
         db.collection(collectionPath).doc(docId).collection('messages').add({
@@ -359,9 +361,18 @@
 
           // Update lastMessageAt for guest chats
           if (this.isGuestMode) {
-            db.collection('guestChats').doc(docId).update({
+            const _docRef = db.collection('guestChats').doc(docId);
+            _docRef.update({
               lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).catch(() => { });
+            }).catch(() => {
+              // Document doesn't exist yet — create it with stable createdAt
+              _docRef.set({
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+                sessionId: docId,
+                guestLabel: 'Khach ' + docId.slice(-6).toUpperCase()
+              }).catch(() => {});
+            });
           }
 
           db.collection(collectionPath).doc(docId).collection('messages').add({
@@ -385,11 +396,20 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('[CHAT] DOMContentLoaded fired, initializing ChatManager');
+  function initChat() {
     // Singleton guard — prevent double-init if script somehow loads twice
     if (window.__bbChatInit) return;
     window.__bbChatInit = true;
     new ChatManager(document);
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('[CHAT] DOMContentLoaded fired, initializing ChatManager');
+      initChat();
+    });
+  } else {
+    console.log('[CHAT] Document already loaded, initializing ChatManager dynamically');
+    initChat();
+  }
 })();

@@ -61,6 +61,32 @@
       background-color: rgba(194, 65, 12, 0.2);
       border-left: 3px solid #C2410C;
     }
+    /* ── Notification Panel ─────────────────────────────────── */
+    @keyframes notif-slidein {
+      from { transform: translateX(110%); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+    @keyframes notif-slideout {
+      from { transform: translateX(0);    opacity: 1; }
+      to   { transform: translateX(110%); opacity: 0; }
+    }
+    .notif-enter  { animation: notif-slidein  0.35s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+    .notif-leave  { animation: notif-slideout 0.28s ease-in forwards; }
+    @keyframes notif-progress {
+      from { width: 100%; }
+      to   { width: 0%; }
+    }
+    .notif-progress-bar { animation: notif-progress var(--dur, 5s) linear forwards; }
+    /* Bell shake when unread notifications exist */
+    @keyframes bell-shake {
+      0%,100% { transform: rotate(0deg); }
+      15%     { transform: rotate(15deg); }
+      30%     { transform: rotate(-13deg); }
+      45%     { transform: rotate(10deg); }
+      60%     { transform: rotate(-8deg); }
+      75%     { transform: rotate(5deg); }
+    }
+    .bell-shake { animation: bell-shake 0.6s ease; }
   </style>
 </head>
 <body class="min-h-full bg-darkbg text-gray-100 font-sans">
@@ -79,6 +105,16 @@
             <span id="admin-name" class="text-xs text-gray-300 max-w-[120px] truncate"></span>
           </div>
           <a href="index.html" class="text-xs px-3 py-1 rounded-full bg-gray-700 border border-white/10 text-gray-300 hover:bg-gray-600 transition">Trang khách</a>
+          <!-- Bell notification button -->
+          <button id="notif-bell-btn"
+            class="relative w-8 h-8 rounded-full bg-gray-700 border border-white/10 flex items-center justify-center hover:bg-gray-600 transition"
+            title="Thông báo">
+            <span id="notif-bell-icon" class="text-base leading-none">🔔</span>
+            <span id="notif-bell-badge"
+              class="hidden absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+              0
+            </span>
+          </button>
           <button id="btn-logout" class="text-xs px-3 py-1 rounded-full bg-red-600/80 hover:bg-red-600 text-white transition">⏏ Đăng xuất</button>
         </div>
       </div>
@@ -278,6 +314,39 @@
           <input id="store-hotline" class="w-full rounded-lg border border-white/20 bg-gray-700 text-gray-200 p-2 placeholder-gray-500" placeholder="Hotline">
           <button id="save-settings" class="px-4 py-2 rounded-lg bg-accent text-white">Lưu</button>
         </div>
+
+        <!-- VietQR Bank Config -->
+        <div class="border-t border-white/10 pt-4 mb-4">
+          <div class="font-semibold mb-1 text-sm">🏦 Cấu hình thanh toán chuyển khoản (VietQR)</div>
+          <div class="text-xs text-gray-500 mb-3">Thông tin này được hiển thị trỪn trang thanh toán. Lưu xong sẽ có hiệu lực ngay.</div>
+          <div class="space-y-2">
+            <div>
+              <label class="text-xs text-gray-400 mb-1 block">Mã ngân hàng <span class="text-gray-600">(VD: MB, VCB, TCB, ACB, BIDV, VTB...)</span></label>
+              <input id="bank-code" class="w-full rounded-lg border border-white/20 bg-gray-700 text-gray-200 p-2 placeholder-gray-500 uppercase" placeholder="MB" maxlength="10" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-400 mb-1 block">Số tài khoản (STK)</label>
+              <input id="bank-account-no" class="w-full rounded-lg border border-white/20 bg-gray-700 text-gray-200 p-2 placeholder-gray-500" placeholder="0123456789" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-400 mb-1 block">Tên chủ tài khoản</label>
+              <input id="bank-account-name" class="w-full rounded-lg border border-white/20 bg-gray-700 text-gray-200 p-2 placeholder-gray-500 uppercase" placeholder="NGUYEN VAN A" />
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="bank-enabled" type="checkbox" class="w-4 h-4 accent-accent" checked />
+              <label for="bank-enabled" class="text-xs text-gray-300">Hiển thị tuỳ chọn thanh toán chuyển khoản</label>
+            </div>
+            <div class="flex items-center gap-3">
+              <button id="save-bank-config" class="px-4 py-2 rounded-lg bg-accent text-white text-sm">Lưu cấu hình ngân hàng</button>
+              <span id="bank-config-status" class="text-xs text-gray-400"></span>
+            </div>
+            <!-- Live preview -->
+            <div id="bank-qr-preview-wrap" class="hidden mt-2">
+              <div class="text-xs text-gray-500 mb-1">Xem trước mã QR (số tiền mẫu: 78,000đ):</div>
+              <img id="bank-qr-preview" alt="VietQR preview" class="w-36 h-36 rounded-xl border border-white/20 object-contain bg-white" />
+            </div>
+          </div>
+        </div>
         
         <div class="border-t border-white/10 pt-4">
           <div class="font-semibold mb-2 text-sm">Quản lý dữ liệu</div>
@@ -398,6 +467,33 @@
       </div>
     </div>
   </div>
+
+  <!-- ══ Notification Panel (slide-in from right, anchored below header) ══ -->
+  <div id="notif-panel"
+    class="fixed top-[72px] right-4 z-[8999] w-80 max-h-[70vh] flex flex-col rounded-2xl bg-gray-800 border border-white/10 shadow-2xl overflow-hidden hidden">
+    <!-- Panel Header -->
+    <div class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-gray-900/60 shrink-0">
+      <span class="text-sm font-semibold text-gray-200">🔔 Thông báo</span>
+      <div class="flex items-center gap-2">
+        <button id="notif-mark-all" class="text-[11px] text-accent hover:underline">Đánh dấu tất cả đã đọc</button>
+        <button id="notif-clear-all" class="text-[11px] text-gray-500 hover:text-red-400 transition">Xóa hết</button>
+      </div>
+    </div>
+    <!-- Notification List -->
+    <div id="notif-list" class="flex-1 overflow-y-auto custom-scrollbar space-y-1 p-2">
+      <div id="notif-empty" class="py-10 text-center text-gray-500 text-xs">
+        <div class="text-3xl mb-2 opacity-30">🔕</div>
+        Chưa có thông báo nào
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Toast Stack (pop-up notifications, bottom-right) ══ -->
+  <div id="notif-toast-stack"
+    class="fixed bottom-6 right-4 z-[9001] flex flex-col-reverse gap-3 pointer-events-none"
+    style="max-width:340px">
+  </div>
+
   <script>
     // Auth guard + user info — runs after firebase-auth-compat.js in <head>
     (function() {

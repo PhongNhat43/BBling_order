@@ -161,11 +161,81 @@ const AdminState = (() => {
     return { id, ...d, createdAt: ts };
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  //  TELEGRAM NOTIFICATION
+  //  Config stored in Firestore: settings/telegram_config
+  //  Structure:
+  //    botToken:   string            (BotFather token)
+  //    enabled:    boolean
+  //    recipients: Array<{ chatId: string, label: string }>
+  // ═══════════════════════════════════════════════════════════════
+  const TelegramNotif = (function () {
+    const CACHE_TTL = 5 * 60 * 1000; // re-fetch config every 5 minutes
+    let _cfg = null;
+    let _cacheTs = 0;
+
+    function _loadConfig() {
+      if (!useFirebase) return Promise.resolve(null);
+      if (_cfg !== null && Date.now() - _cacheTs < CACHE_TTL) return Promise.resolve(_cfg);
+      return db.collection('settings').doc('telegram_config').get()
+        .then(function (doc) {
+          _cfg = doc.exists ? doc.data() : null;
+          _cacheTs = Date.now();
+          return _cfg;
+        })
+        .catch(function (err) {
+          console.warn('[Telegram] Config load failed:', err);
+          return null;
+        });
+    }
+
+    function send(text) {
+      _loadConfig().then(function (cfg) {
+        if (!cfg || cfg.enabled === false || !cfg.botToken || !Array.isArray(cfg.recipients) || !cfg.recipients.length) return;
+        var token = cfg.botToken;
+        cfg.recipients.forEach(function (r) {
+          var chatId = (r && r.chatId) ? r.chatId : r;
+          if (!chatId) return;
+          fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: String(chatId), text: text, parse_mode: 'HTML' })
+          }).catch(function (e) { console.warn('[Telegram] Send failed to', chatId, e.message); });
+        });
+      });
+    }
+
+    return { send };
+  })();
+
   function setupOrdersListener() {
     if (!useFirebase) return;
     db.collection('orders').orderBy('createdAt', 'desc').onSnapshot(function (snap) {
+      const prevCount = lastOrderCount;
+      const newDocs = [];
+      snap.docChanges().forEach(function (ch) {
+        if (ch.type === 'added') newDocs.push(docToOrder(ch.doc.id, ch.doc.data()));
+      });
       orders = snap.docs.map(function (doc) { return docToOrder(doc.id, doc.data()); });
-      if (orders.length > lastOrderCount && lastOrderCount > 0) playTing();
+      if (prevCount > 0 && newDocs.length) {
+        playTing();
+        newDocs.forEach(function (o) {
+          const custName = (o.customer && o.customer.name) ? o.customer.name : 'Khách';
+          const method = o.method === 'cash' ? '💵 Tiền mặt' : '🏦 Chuyển khoản';
+          NotifMgr.push(
+            'order',
+            '🛍️ Đơn hàng mới #' + o.id,
+            custName + ' · ' + vndK(totalK(o)) + ' · ' + method,
+            o.id
+          );
+          TelegramNotif.send(
+            '🛍️ <b>Đơn hàng mới #' + o.id + '</b>\n'
+            + '👤 ' + custName + '\n'
+            + '💰 ' + vndK(totalK(o)) + ' · ' + method + '\n'
+            + '📍 ' + ((o.customer && o.customer.address) ? o.customer.address : 'Chưa có địa chỉ')
+          );
+        });
+      }
       lastOrderCount = orders.length;
       renderOrders();
       updateNewOrderBadge();
@@ -174,9 +244,33 @@ const AdminState = (() => {
     }, function () { if (qs('#admin-debug')) qs('#admin-debug').textContent = 'Mất kết nối Firebase'; });
   }
 
+  // Track last-seen lastMessageAt per session to avoid duplicate chat notifications
+  const _chatLastSeen = {};
+
   function setupGuestChatsListener() {
     if (!useFirebase) return;
     db.collection('guestChats').orderBy('lastMessageAt', 'desc').onSnapshot(function (snap) {
+      const newMessages = [];
+      snap.docChanges().forEach(function (ch) {
+        if (ch.type !== 'added' && ch.type !== 'modified') return;
+        const d = ch.doc.data() || {};
+        const ts = d.lastMessageAt && (d.lastMessageAt.toMillis ? d.lastMessageAt.toMillis() : d.lastMessageAt) || 0;
+        const prev = _chatLastSeen[ch.doc.id] || 0;
+        // Only notify if lastMessageAt actually moved forward and doc is not currently selected
+        if (ts > prev && !(selectedId === ch.doc.id && selectedType === 'guest')) {
+          if (prev > 0) { // skip very first load
+            newMessages.push({
+              id: ch.doc.id,
+              label: d.guestLabel || ('Khach ' + String(ch.doc.id).slice(-6).toUpperCase()),
+              ts
+            });
+          }
+          _chatLastSeen[ch.doc.id] = ts;
+        } else if (!_chatLastSeen[ch.doc.id]) {
+          _chatLastSeen[ch.doc.id] = ts; // seed on first load
+        }
+      });
+
       guestChats = snap.docs.map(function (doc) {
         const d = doc.data() || {};
         const ts = d.lastMessageAt && (d.lastMessageAt.toMillis ? d.lastMessageAt.toMillis() : d.lastMessageAt) || Date.now();
@@ -190,6 +284,12 @@ const AdminState = (() => {
           type: 'guest'
         };
       });
+
+      newMessages.forEach(function (m) {
+        NotifMgr.push('chat', '💬 Tin nhắn mới từ ' + m.label, 'Khách vừa gửi tin nhắn', m.id);
+        TelegramNotif.send('💬 <b>Tin nhắn mới</b> từ <b>' + m.label + '</b>\nKhách vừa gửi tin nhắn qua chat');
+      });
+
       // Only update sidebar — do NOT call renderDetail() here.
       // renderDetail() wipes chat.innerHTML and resets the messages listener,
       // causing a full reload/jump every time lastMessageAt changes (e.g. on every reply).
@@ -593,6 +693,8 @@ const AdminState = (() => {
         }).then(function() {
           // Ignore stale async callback when user has already switched to another thread.
           if (selectedId !== activeSelectedId || selectedType !== activeSelectedType) return;
+          // Cancel any previous listener (safety guard for rapid re-renders of the same thread)
+          if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
           messagesUnsub = db.collection(collectionPath).doc(activeSelectedId).collection('messages').orderBy('createdAt').onSnapshot(function (snap) {
           snap.docChanges().forEach(function (change) {
             if (change.type === 'added') {
@@ -1113,6 +1215,83 @@ const AdminState = (() => {
       localStorage.setItem('bb_store', JSON.stringify({name:n.value.trim(),hotline:h.value.trim()})); 
       Toast.success('✓ Đã lưu cài đặt');
     });
+
+    // ── VietQR Bank Config (Firestore: settings/payment_config) ────────────
+    const bankCodeEl      = qs('#bank-code');
+    const bankAccNoEl     = qs('#bank-account-no');
+    const bankAccNameEl   = qs('#bank-account-name');
+    const bankEnabledEl   = qs('#bank-enabled');
+    const saveBankBtn     = qs('#save-bank-config');
+    const bankStatusEl    = qs('#bank-config-status');
+    const qrPreviewWrap   = qs('#bank-qr-preview-wrap');
+    const qrPreviewImg    = qs('#bank-qr-preview');
+
+    function buildVietQRUrl(code, accNo, accName, amt) {
+      var c = (code||'').toUpperCase().trim();
+      var a = (accNo||'').trim();
+      if (!c || !a) return null;
+      var name = encodeURIComponent((accName||'').trim());
+      return 'https://img.vietqr.io/image/' + c + '-' + a + '-compact2.png'
+        + '?amount=' + (amt||0)
+        + '&addInfo=' + encodeURIComponent('Thanh toan B.BLING')
+        + (name ? '&accountName=' + name : '');
+    }
+
+    function updateQRPreview() {
+      var url = buildVietQRUrl(bankCodeEl&&bankCodeEl.value, bankAccNoEl&&bankAccNoEl.value, bankAccNameEl&&bankAccNameEl.value, 78000);
+      if (url && qrPreviewWrap && qrPreviewImg) {
+        qrPreviewImg.src = url;
+        qrPreviewWrap.classList.remove('hidden');
+      } else if (qrPreviewWrap) {
+        qrPreviewWrap.classList.add('hidden');
+      }
+    }
+
+    if (useFirebase) {
+      // Load existing config
+      db.collection('settings').doc('payment_config').get().then(function(doc) {
+        if (!doc.exists) return;
+        var d = doc.data();
+        if (bankCodeEl    && d.bankCode)      bankCodeEl.value    = d.bankCode;
+        if (bankAccNoEl   && d.accountNo)     bankAccNoEl.value   = d.accountNo;
+        if (bankAccNameEl && d.accountName)   bankAccNameEl.value = d.accountName;
+        if (bankEnabledEl)                    bankEnabledEl.checked = d.enabled !== false;
+        updateQRPreview();
+      }).catch(function(err) { console.warn('Load bank config failed:', err); });
+    }
+
+    if (bankCodeEl)    bankCodeEl.addEventListener('input',    updateQRPreview);
+    if (bankAccNoEl)   bankAccNoEl.addEventListener('input',   updateQRPreview);
+    if (bankAccNameEl) bankAccNameEl.addEventListener('input', updateQRPreview);
+
+    saveBankBtn&&saveBankBtn.addEventListener('click', function() {
+      var code    = (bankCodeEl&&bankCodeEl.value||'').toUpperCase().trim();
+      var accNo   = (bankAccNoEl&&bankAccNoEl.value||'').trim();
+      var accName = (bankAccNameEl&&bankAccNameEl.value||'').trim();
+      var enabled = bankEnabledEl ? bankEnabledEl.checked : true;
+      if (!code || !accNo) {
+        if (bankStatusEl) bankStatusEl.textContent = '⚠️ Nhập mã ngân hàng và STK';
+        return;
+      }
+      if (!useFirebase) { Toast.error('Cần Firebase để lưu'); return; }
+      if (bankStatusEl) bankStatusEl.textContent = 'Đang lưu...';
+      db.collection('settings').doc('payment_config').set({
+        bankCode:    code,
+        accountNo:   accNo,
+        accountName: accName,
+        enabled:     enabled,
+        updatedAt:   firebase.firestore.FieldValue.serverTimestamp()
+      }).then(function() {
+        if (bankStatusEl) bankStatusEl.textContent = '✓ Đã lưu';
+        Toast.success('✓ Cấu hình ngân hàng đã cập nhật');
+        updateQRPreview();
+        setTimeout(function(){ if(bankStatusEl) bankStatusEl.textContent=''; }, 3000);
+      }).catch(function(err) {
+        if (bankStatusEl) bankStatusEl.textContent = '❌ Thất bại';
+        Toast.error('❌ Lưu thất bại: ' + err.message);
+      });
+    });
+    // ── End bank config ────────────────────────────────────────────────────
     
     // Clear old orders (>7 days)
     clearOrders&&clearOrders.addEventListener('click', ()=>{
@@ -1481,7 +1660,291 @@ const AdminState = (() => {
     return { total, passed, failed: total - passed };
   };
 
+  // ═══════════════════════════════════════════════════════════════
+  //  NOTIFICATION MANAGER
+  //  - Bell button (top-right) toggles slide-in panel with history
+  //  - Toast pop-ups (bottom-right) for new order / new message
+  // ═══════════════════════════════════════════════════════════════
+  const NotifMgr = (function () {
+    const MAX_HISTORY = 50;    // max items kept in panel list
+    const TOAST_DURATION = 6000; // ms before toast auto-dismisses
+
+    let _items = [];  // { id, type, title, body, ts, read, tab, targetId }
+    let _nextId = 1;
+    let _panelOpen = false;
+    let _bellBtn, _bellBadge, _bellIcon, _panel, _list, _emptyMsg, _toastStack;
+
+    function _qs(id) { return document.getElementById(id); }
+
+    function _unreadCount() { return _items.filter(n => !n.read).length; }
+
+    function _updateBellBadge() {
+      const count = _unreadCount();
+      if (!_bellBadge) return;
+      if (count > 0) {
+        _bellBadge.textContent = count > 9 ? '9+' : String(count);
+        _bellBadge.classList.remove('hidden');
+        if (_bellIcon) {
+          _bellIcon.classList.remove('bell-shake');
+          void _bellIcon.offsetWidth; // reflow to restart animation
+          _bellIcon.classList.add('bell-shake');
+        }
+      } else {
+        _bellBadge.classList.add('hidden');
+      }
+    }
+
+    function _renderPanel() {
+      if (!_list) return;
+      const empty = _qs('notif-empty');
+      if (!_items.length) {
+        _list.innerHTML = '';
+        if (empty) { _list.appendChild(empty); empty.classList.remove('hidden'); }
+        return;
+      }
+      if (empty) empty.classList.add('hidden');
+
+      // Rebuild list (newest first)
+      const existing = new Set(Array.from(_list.querySelectorAll('[data-nid]')).map(el => el.dataset.nid));
+      const sorted = [..._items].sort((a, b) => b.ts - a.ts);
+
+      // Remove stale items
+      _list.querySelectorAll('[data-nid]').forEach(el => {
+        if (!_items.find(n => String(n.id) === el.dataset.nid)) el.remove();
+      });
+
+      sorted.forEach((n, idx) => {
+        const nidStr = String(n.id);
+        let row = _list.querySelector('[data-nid="' + nidStr + '"]');
+        if (row) {
+          // Update read state only
+          row.classList.toggle('bg-accent/10', !n.read);
+          row.classList.toggle('border-accent/30', !n.read);
+          return;
+        }
+        row = document.createElement('div');
+        row.dataset.nid = nidStr;
+        row.className = 'flex gap-3 items-start rounded-xl px-3 py-2.5 cursor-pointer transition border '
+          + (n.read ? 'border-transparent hover:bg-white/5' : 'bg-accent/10 border-accent/30 hover:bg-accent/20');
+
+        const iconEl = document.createElement('div');
+        iconEl.className = 'text-xl shrink-0 mt-0.5';
+        iconEl.textContent = n.type === 'order' ? '🛍️' : '💬';
+        row.appendChild(iconEl);
+
+        const body = document.createElement('div');
+        body.className = 'flex-1 min-w-0';
+
+        const titleRow = document.createElement('div');
+        titleRow.className = 'flex items-center justify-between gap-1';
+        const titleEl = document.createElement('span');
+        titleEl.className = 'text-sm font-semibold text-gray-200 truncate';
+        titleEl.textContent = n.title;
+        const timeEl = document.createElement('span');
+        timeEl.className = 'text-[10px] text-gray-500 shrink-0 tabular-nums';
+        timeEl.textContent = relativeTime(n.ts);
+        titleRow.appendChild(titleEl);
+        titleRow.appendChild(timeEl);
+
+        const bodyEl = document.createElement('div');
+        bodyEl.className = 'text-xs text-gray-400 mt-0.5 leading-relaxed';
+        bodyEl.textContent = n.body;
+
+        body.appendChild(titleRow);
+        body.appendChild(bodyEl);
+        row.appendChild(body);
+
+        row.addEventListener('click', () => {
+          n.read = true;
+          _updateBellBadge();
+          _renderPanel();
+          // Navigate to the relevant tab / item
+          if (n.type === 'order') {
+            showTab('orders');
+            if (n.targetId) {
+              selectedId = n.targetId;
+              selectedType = 'order';
+              markOrderViewed(n.targetId);
+              showDetailModal();
+            }
+          } else {
+            showTab('chat');
+            if (n.targetId) {
+              selectedId = n.targetId;
+              selectedType = 'guest';
+              markChatViewed(n.targetId);
+              renderThreads();
+              renderDetail();
+            }
+          }
+          _closePanel();
+        });
+
+        // New items are always the most recent — prepend before existing rows
+        const firstExisting = _list.querySelector('[data-nid]');
+        if (firstExisting && n.ts >= (_items.find(x => String(x.id) === firstExisting.dataset.nid) || {}).ts) {
+          _list.insertBefore(row, firstExisting);
+        } else {
+          _list.appendChild(row);
+        }
+      });
+    }
+
+    function _openPanel() {
+      if (!_panel) return;
+      _panel.classList.remove('hidden');
+      _panelOpen = true;
+    }
+    function _closePanel() {
+      if (!_panel) return;
+      _panel.classList.add('hidden');
+      _panelOpen = false;
+    }
+
+    // ── Public: push a new notification ─────────────────────────────────
+    function push(type, title, body, targetId) {
+      const n = { id: _nextId++, type, title, body, ts: Date.now(), read: false, targetId: targetId || null };
+      _items.unshift(n);
+      if (_items.length > MAX_HISTORY) _items.length = MAX_HISTORY;
+
+      _updateBellBadge();
+      _renderPanel();
+      _showToast(n);
+    }
+
+    // ── Toast pop-up ─────────────────────────────────────────────────────
+    function _showToast(n) {
+      if (!_toastStack) return;
+
+      const toast = document.createElement('div');
+      toast.className = 'pointer-events-auto relative w-full rounded-2xl border shadow-2xl overflow-hidden notif-enter '
+        + (n.type === 'order'
+          ? 'bg-amber-900/95 border-amber-500/40'
+          : 'bg-gray-800/95 border-accent/40');
+
+      // Progress bar
+      const progress = document.createElement('div');
+      progress.className = 'absolute bottom-0 left-0 h-[3px] rounded-full notif-progress-bar '
+        + (n.type === 'order' ? 'bg-amber-400' : 'bg-accent');
+      progress.style.setProperty('--dur', (TOAST_DURATION / 1000) + 's');
+
+      const inner = document.createElement('div');
+      inner.className = 'flex items-start gap-3 px-4 py-3';
+
+      const iconEl = document.createElement('div');
+      iconEl.className = 'text-2xl shrink-0';
+      iconEl.textContent = n.type === 'order' ? '🛍️' : '💬';
+
+      const textWrap = document.createElement('div');
+      textWrap.className = 'flex-1 min-w-0';
+      const titleEl = document.createElement('div');
+      titleEl.className = 'text-sm font-semibold text-gray-100';
+      titleEl.textContent = n.title;
+      const bodyEl = document.createElement('div');
+      bodyEl.className = 'text-xs text-gray-300 mt-0.5 leading-relaxed';
+      bodyEl.textContent = n.body;
+      textWrap.appendChild(titleEl);
+      textWrap.appendChild(bodyEl);
+
+      // Action button
+      const actBtn = document.createElement('button');
+      actBtn.className = 'shrink-0 self-center text-xs px-2.5 py-1 rounded-lg '
+        + (n.type === 'order' ? 'bg-amber-500 text-gray-900' : 'bg-accent text-white')
+        + ' font-semibold hover:opacity-90 transition';
+      actBtn.textContent = n.type === 'order' ? 'Xem đơn' : 'Xem chat';
+      actBtn.addEventListener('click', () => {
+        n.read = true;
+        _updateBellBadge();
+        _renderPanel();
+        if (n.type === 'order') {
+          showTab('orders');
+          if (n.targetId) { selectedId = n.targetId; selectedType = 'order'; markOrderViewed(n.targetId); showDetailModal(); }
+        } else {
+          showTab('chat');
+          if (n.targetId) { selectedId = n.targetId; selectedType = 'guest'; markChatViewed(n.targetId); renderThreads(); renderDetail(); }
+        }
+        _dismiss(toast, timer);
+        _closePanel();
+      });
+
+      // Dismiss X
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'shrink-0 text-gray-400 hover:text-gray-200 text-lg leading-none ml-1';
+      closeBtn.textContent = '×';
+      closeBtn.addEventListener('click', () => _dismiss(toast, timer));
+
+      inner.appendChild(iconEl);
+      inner.appendChild(textWrap);
+      inner.appendChild(actBtn);
+      inner.appendChild(closeBtn);
+      toast.appendChild(inner);
+      toast.appendChild(progress);
+
+      _toastStack.appendChild(toast);
+
+      const timer = setTimeout(() => _dismiss(toast, null), TOAST_DURATION);
+
+      // Pause progress on hover
+      toast.addEventListener('mouseenter', () => {
+        progress.style.animationPlayState = 'paused';
+        clearTimeout(timer);
+      });
+      toast.addEventListener('mouseleave', () => {
+        progress.style.animationPlayState = 'running';
+        setTimeout(() => _dismiss(toast, null), TOAST_DURATION);
+      });
+    }
+
+    function _dismiss(toast, timer) {
+      if (timer) clearTimeout(timer);
+      toast.classList.remove('notif-enter');
+      toast.classList.add('notif-leave');
+      toast.addEventListener('animationend', () => toast.remove(), { once: true });
+    }
+
+    // ── Init (call after DOM ready) ──────────────────────────────────────
+    function init() {
+      _bellBtn    = _qs('notif-bell-btn');
+      _bellBadge  = _qs('notif-bell-badge');
+      _bellIcon   = _qs('notif-bell-icon');
+      _panel      = _qs('notif-panel');
+      _list       = _qs('notif-list');
+      _emptyMsg   = _qs('notif-empty');
+      _toastStack = _qs('notif-toast-stack');
+
+      if (_bellBtn) {
+        _bellBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (_panelOpen) { _closePanel(); } else { _openPanel(); }
+        });
+      }
+      // Close panel when clicking outside
+      document.addEventListener('click', (e) => {
+        if (_panelOpen && _panel && !_panel.contains(e.target) && e.target !== _bellBtn && !_bellBtn.contains(e.target)) {
+          _closePanel();
+        }
+      });
+      // Mark all read
+      const markAllBtn = _qs('notif-mark-all');
+      if (markAllBtn) markAllBtn.addEventListener('click', () => {
+        _items.forEach(n => n.read = true);
+        _updateBellBadge();
+        _renderPanel();
+      });
+      // Clear all
+      const clearAllBtn = _qs('notif-clear-all');
+      if (clearAllBtn) clearAllBtn.addEventListener('click', () => {
+        _items = [];
+        _updateBellBadge();
+        _renderPanel();
+      });
+    }
+
+    return { push, init };
+  })();
+
   document.addEventListener('DOMContentLoaded', ()=>{
+    NotifMgr.init();
     bindTabs(); bindOrders(); bindMenu(); bindSettings(); bindQuickReplies();
     if (useFirebase) {
       loadMenuFromFirebase(function () {

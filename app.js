@@ -34,7 +34,7 @@ function renderMenu() {
       <h3 class="font-serif italic text-lg mb-3">${cat.name}</h3>
       <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         ${cat.items.map(i => `
-          <div class="flex flex-col rounded-2xl bg-white/70 backdrop-blur shadow-soft border border-primary/10 overflow-hidden cursor-pointer hover:shadow-lg transition-shadow menu-item" data-card="${i.id}">
+          <div class="flex flex-col rounded-2xl bg-white/90 shadow-soft border border-primary/10 overflow-hidden cursor-pointer hover:shadow-lg transition-shadow menu-item" data-card="${i.id}">
             <div class="relative aspect-[4/3] overflow-hidden bg-cream/60">
               <img src="${i.img}" alt="${i.name}" class="w-full h-full object-cover" />
               ${i.tag ? `<span class="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold text-white ${i.tag === 'Mới' ? 'bg-success' : 'bg-accent'}">${i.tag}</span>` : ''}
@@ -380,7 +380,7 @@ window.addEventListener('bb-menu-updated', function () { renderMenu(); });
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: finalLeft, top: finalTop }));
       console.log('[DRAG] Position saved to localStorage');
-    } catch(e) {
+    } catch (e) {
       console.error('[DRAG] localStorage save error:', e);
     }
   }
@@ -402,7 +402,7 @@ window.addEventListener('bb-menu-updated', function () { renderMenu(); });
       } else {
         console.log('[DRAG] No saved position in localStorage, using defaults');
       }
-    } catch(e) {
+    } catch (e) {
       console.error('[DRAG] restoreSavedPosition error:', e);
     }
   }
