@@ -76,14 +76,9 @@
     if (panel && panel.parentElement) panel.parentElement.removeChild(panel);
     panel = document.createElement('div');
     panel.id = SELECTORS.panel;
-    panel.className = 'hidden fixed right-6 bottom-28 w-[92%] max-w-[460px] rounded-2xl bg-white/95 backdrop-blur shadow-soft p-4 ring-1 ring-primary/10 z-50';
-    panel.innerHTML = '<div class="flex items-center justify-between mb-3 border-b border-primary/10 pb-2"><div class="flex items-center gap-3"><img id="chat-avatar" alt="B.BLING" class="w-9 h-9 rounded-full object-cover border border-primary/10" src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=96&q=60"/><div><div class="font-semibold text-sm">Hỗ trợ B.BLING</div><div class="text-[10px] text-success flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-success"></span>Đang trực tuyến</div></div></div><button id="chat-close" class="text-primary/60 text-xl leading-none hover:shadow-lg active:scale-95 transition">&times;</button></div><div id="chat-log" class="h-72 overflow-y-auto space-y-2 text-sm p-2 bg-cream rounded-xl"></div><div class="mt-3 flex items-center gap-2"><input id="chat-input" class="flex-1 rounded-xl border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/><button id="chat-upload-btn" type="button" class="w-11 h-11 rounded-xl bg-primary text-cream flex items-center justify-center hover:shadow-lg transition" aria-label="Tải ảnh"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"w-5 h-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 7h4l2-3h6l2 3h4v12H3V7z\"/><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 17a4 4 0 100-8 4 4 0 000 8z\"/></svg></button><input id=\"chat-upload\" type=\"file\" accept=\"image/*\" class=\"hidden\"/><button id=\"chat-send\" type=\"button\" class=\"px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm hover:shadow-lg transition\">Gửi</button></div>';
-    panel.style.position = 'fixed';
-    panel.style.right = '24px';
-    panel.style.bottom = '120px';
+    panel.className = 'hidden fixed right-4 bottom-20 w-[92%] max-w-[460px] max-h-[75dvh] flex flex-col rounded-2xl bg-white/95 backdrop-blur shadow-soft p-4 ring-1 ring-primary/10 z-50';
+    panel.innerHTML = '<div class="flex items-center justify-between mb-3 border-b border-primary/10 pb-2 shrink-0"><div class="flex items-center gap-3"><img id="chat-avatar" alt="B.BLING" class="w-9 h-9 rounded-full object-cover border border-primary/10" src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=96&q=60"/><div><div class="font-semibold text-sm">Hỗ trợ B.BLING</div><div class="text-[10px] text-success flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-success"></span>Đang trực tuyến</div></div></div><button id="chat-close" class="text-primary/60 text-xl leading-none hover:shadow-lg active:scale-95 transition">&times;</button></div><div id="chat-log" class="flex-1 overflow-y-auto space-y-2 text-sm p-2 bg-cream rounded-xl min-h-[150px]"></div><div class="mt-3 flex items-center gap-2 shrink-0"><input id="chat-input" class="flex-1 rounded-xl border border-primary/20 p-2 outline-none focus:ring-2 focus:ring-accent/60" placeholder="Nhập tin nhắn..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/><button id="chat-upload-btn" type="button" class="w-11 h-11 rounded-xl bg-primary text-cream flex items-center justify-center hover:shadow-lg transition shrink-0" aria-label="Tải ảnh"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"w-5 h-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 7h4l2-3h6l2 3h4v12H3V7z\"/><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 17a4 4 0 100-8 4 4 0 000 8z\"/></svg></button><input id=\"chat-upload\" type=\"file\" accept=\"image/*\" class=\"hidden\"/><button id=\"chat-send\" type=\"button\" class=\"px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-accent text-white text-sm hover:shadow-lg transition shrink-0\">Gửi</button></div>';
     panel.style.zIndex = '9999';
-    panel.style.maxWidth = '460px';
-    panel.style.width = '92%';
     document.body.appendChild(panel);
   }
 
@@ -101,6 +96,7 @@
       this.firstOpen = true;
       this.messagesUnsub = null; // Store unsubscribe function
       this.lastProcessedTime = Date.now(); // Only show messages after initialization
+      this._viewportRaf = null;
       if (!this.toggle || !this.panel || !this.log) {
         console.warn('[B.BLING Chat] UI elements not found. VERSION:', VERSION);
         return;
@@ -112,6 +108,7 @@
       this.isGuestMode = !this.orderId;
       this.useFirebase = !!(window.bbDb);
       this.bindEvents();
+      this.bindViewportHandlers();
       if (this.useFirebase) this.setupFirebaseChat();
       console.log('[B.BLING Chat] Initialized VERSION:', VERSION,
         this.useFirebase ? (this.isGuestMode ? '(Firebase Guest)' : '(Firebase Order)') : '(Local)');
@@ -147,6 +144,43 @@
       });
       if (this.uploadBtn) this.uploadBtn.addEventListener('click', () => (this.upload || document.getElementById('chat-upload')).click());
       if (this.upload) this.upload.addEventListener('change', (e) => this.handleUpload(e));
+    }
+
+    bindViewportHandlers() {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const onViewportChange = () => {
+        if (this._viewportRaf) cancelAnimationFrame(this._viewportRaf);
+        this._viewportRaf = requestAnimationFrame(() => this.applyViewportLayout());
+      };
+      vv.addEventListener('resize', onViewportChange);
+      vv.addEventListener('scroll', onViewportChange);
+      window.addEventListener('orientationchange', onViewportChange);
+      this.applyViewportLayout();
+    }
+
+    applyViewportLayout() {
+      if (!this.panel) return;
+      const isMobile = window.matchMedia('(max-width: 768px)').matches;
+      if (!isMobile) {
+        this.panel.style.bottom = '80px';
+        this.panel.style.maxHeight = '75dvh';
+        return;
+      }
+
+      const vv = window.visualViewport;
+      if (!vv) return;
+
+      const keyboardHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      const keyboardOpen = keyboardHeight > 120;
+
+      if (keyboardOpen) {
+        this.panel.style.bottom = '8px';
+        this.panel.style.maxHeight = Math.max(220, Math.floor(vv.height - 16)) + 'px';
+      } else {
+        this.panel.style.bottom = '80px';
+        this.panel.style.maxHeight = '75dvh';
+      }
     }
 
     getOrCreateSessionId() {
@@ -226,6 +260,7 @@
       const hidden = this.panel.classList.contains('hidden');
       if (hidden) {
         this.panel.classList.remove('hidden');
+        this.applyViewportLayout();
         if (this.firstOpen) {
           this.pushStoreText('Chào bạn! B.BLING có thể giúp gì cho bạn? Nếu bạn đã thanh toán, hãy gửi ảnh biên lai tại đây nhé!');
           this.firstOpen = false;
@@ -318,7 +353,7 @@
               lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
               sessionId: docId,
               guestLabel: 'Khach ' + docId.slice(-6).toUpperCase()
-            }).catch(() => {});
+            }).catch(() => { });
           });
         }
 
@@ -371,7 +406,7 @@
                 lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
                 sessionId: docId,
                 guestLabel: 'Khach ' + docId.slice(-6).toUpperCase()
-              }).catch(() => {});
+              }).catch(() => { });
             });
           }
 

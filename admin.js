@@ -28,7 +28,7 @@ const AdminState = (() => {
   const useFirebase = !!db;
   function persistMenu(){ saveMenu(categories, items); if(useFirebase) persistMenuToFirebase(); }
   function vndK(k){ return (k*1000).toLocaleString('vi-VN')+' đ'; }
-  function totalK(order){ return order.items.reduce((s,i)=>s+i.qty*i.priceK,0); }
+  function totalK(order){ return order.items.reduce((s,i)=>s+i.qty*(i.unitPriceK||i.priceK||0),0); }
   // Orders: NEW means not viewed by admin yet (not time-based)
   // Guest chats: keep legacy time-based behavior by passing timestamp number.
   function isNewOrder(orderOrTs){
@@ -537,42 +537,25 @@ const AdminState = (() => {
     const itemsEl = qs('#modal-detail-items');
     if(itemsEl){
       itemsEl.innerHTML = '';
-      o.items.forEach(i => {
-        const row = el('div', 'flex items-center gap-4 rounded-xl bg-gray-800/50 border border-white/5 px-4 py-3 hover:bg-gray-800 transition');
-        // Image with fallback
-        if(i.img) {
-          const img = document.createElement('img');
-          img.src = i.img;
-          img.alt = i.name || '';
-          img.className = 'w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-700 border border-white/10';
-          img.onerror = function() {
-            this.onerror = null;
-            this.src = 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=96&q=60';
-          };
-          row.appendChild(img);
-        } else {
-          row.appendChild(el('div', 'w-16 h-16 rounded-lg bg-gray-700 flex-shrink-0 border border-white/10'));
-        }
-        const info = el('div', 'flex-1 min-w-0');
-        const nameRow = el('div', 'flex items-center justify-between gap-2 mb-1');
-        const name = el('span', 'font-medium text-gray-200 text-sm truncate');
-        name.textContent = i.name || '';
-        const qty = el('span', 'text-xs px-2 py-0.5 rounded-md bg-gray-700 text-gray-400 font-mono');
-        qty.textContent = `x${i.qty}`;
-        nameRow.appendChild(name);
-        nameRow.appendChild(qty);
-        const priceRow = el('div', 'flex items-center justify-between text-xs');
-        const unitPrice = el('span', 'text-gray-500');
-        unitPrice.textContent = `Đơn giá: ${vndK(i.priceK)}`;
-        const subtotal = el('span', 'text-gray-300 font-medium');
-        subtotal.textContent = vndK(i.qty * i.priceK);
-        priceRow.appendChild(unitPrice);
-        priceRow.appendChild(subtotal);
-        info.appendChild(nameRow);
-        info.appendChild(priceRow);
-        row.appendChild(info);
-        itemsEl.appendChild(row);
+      const tableWrap = el('div', 'overflow-x-auto rounded-xl border border-white/10');
+      const table = el('table', 'w-full text-xs text-left');
+      table.innerHTML = '<thead class="bg-gray-900/70 text-gray-400"><tr><th class="px-3 py-2">Món</th><th class="px-3 py-2">Size</th><th class="px-3 py-2 text-right">SL</th><th class="px-3 py-2 text-right">Đơn giá</th><th class="px-3 py-2 text-right">Thành tiền</th></tr></thead>';
+      const tbody = document.createElement('tbody');
+      o.items.forEach(function (i) {
+        const tr = document.createElement('tr');
+        tr.className = 'border-t border-white/5 bg-gray-800/40';
+        const unitPriceForDisplay = i.unitPriceK || i.priceK || 0;
+        const nameCell = `<td class="px-3 py-2 text-gray-200">${i.name || ''}</td>`;
+        const sizeCell = `<td class="px-3 py-2 text-gray-300">${i.size || '—'}</td>`;
+        const qtyCell = `<td class="px-3 py-2 text-right text-gray-300">${i.qty || 0}</td>`;
+        const unitCell = `<td class="px-3 py-2 text-right text-gray-300">${vndK(unitPriceForDisplay)}</td>`;
+        const subCell = `<td class="px-3 py-2 text-right text-gray-100 font-medium">${vndK((i.qty || 0) * unitPriceForDisplay)}</td>`;
+        tr.innerHTML = nameCell + sizeCell + qtyCell + unitCell + subCell;
+        tbody.appendChild(tr);
       });
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+      itemsEl.appendChild(tableWrap);
     }
 
     // Total
@@ -961,7 +944,8 @@ const AdminState = (() => {
       const status = getStatusInfo(o.status).label;
       const total = totalK(o)*1000;
       o.items.forEach(i=>{
-        rows.push({'Mã đơn':o.id,'Hình thức':o.method==='transfer'?'Chuyển khoản':'Tiền mặt','Trạng thái':status,'Thời gian':time,'Món':i.name,'Số lượng':i.qty,'Đơn giá (VND)':i.priceK*1000,'Thành tiền (VND)':i.qty*i.priceK*1000,'Tổng đơn (VND)':total});
+        const unitPrice = i.unitPriceK || i.priceK || 0;
+        rows.push({'Mã đơn':o.id,'Hình thức':o.method==='transfer'?'Chuyển khoản':'Tiền mặt','Trạng thái':status,'Thời gian':time,'Món':i.name,'Size':i.size||'—','Số lượng':i.qty,'Đơn giá (VND)':unitPrice*1000,'Thành tiền (VND)':i.qty*unitPrice*1000,'Tổng đơn (VND)':total});
       });
     });
     const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Bao_cao'); XLSX.writeFile(wb,'Bao_cao_don_hang.xlsx');
@@ -1130,22 +1114,50 @@ const AdminState = (() => {
     const root=qs('#item-list'); if(!root) return; root.innerHTML='';
     items.forEach(it=>{
       const row=el('div','flex items-center justify-between rounded-lg bg-gray-700/50 p-3 border border-white/10');
-      const left=el('div',''); left.appendChild(el('div','font-medium text-sm text-gray-200',it.name+(it.visible!==false?'':' (Ẩn)'))); left.appendChild(el('div','text-xs text-gray-500', `${it.priceK}k · ${(categories.find(c=>c.id===it.cat)?.name||'Chưa có danh mục')}`));
+      const left=el('div','');
+      left.appendChild(el('div','font-medium text-sm text-gray-200',it.name+(it.visible!==false?'':' (Ẩn)')));
+      const dynamicSizes = getItemAvailableSizes(it);
+      const sizeSummary = dynamicSizes.length
+        ? dynamicSizes.map(function (s) { return `${s.label}:${s.priceK}k`; }).join(' | ')
+        : `${it.priceK}k`;
+      left.appendChild(el('div','text-xs text-gray-500', `${sizeSummary} · ${(categories.find(c=>c.id===it.cat)?.name||'Chưa có danh mục')}`));
       const r=el('div','flex items-center gap-1');
       const hide=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs', it.visible!==false?'Ẩn':'Hiện');
       const ed=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs','Sửa');
       const del=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs','Xóa');
       hide.addEventListener('click', ()=>{ it.visible=!it.visible; persistMenu(); renderItems(); });
       ed.addEventListener('click', ()=>{
+        const existingSizes = getItemAvailableSizes(it);
         openModal('Sửa món',[
           {type:'input',id:'it-name',value:it.name,placeholder:'Tên món'},
-          {type:'input',id:'it-price',value:String(it.priceK),placeholder:'Giá (k)'},
+          {type:'checkbox',id:'it-has-sizes',value:existingSizes.length>0,label:'Sản phẩm có size?'},
+          {type:'input',id:'it-price',value:String(it.priceK),placeholder:'Giá mặc định (k)'},
+          {type:'sizes-editor',id:'it-sizes-editor',value:existingSizes,dependsOn:'it-has-sizes'},
           {type:'input',id:'it-desc',value:it.desc||'',placeholder:'Mô tả'},
           {type:'file',id:'it-img',value:it.img||'',placeholder:'Chọn ảnh mới (để trống giữ nguyên)', accept:'image/*'},
           {type:'select',id:'it-cat',value:it.cat,options:categories.map(c=>({value:c.id,label:c.name}))}
         ], async()=>{
           it.name=qs('#it-name').value.trim()||it.name;
-          const p=Number(qs('#it-price').value); it.priceK=isNaN(p)?it.priceK:Math.round(p);
+          const hasSizes=qs('#it-has-sizes').checked;
+          const priceBase=Number(qs('#it-price').value); 
+          it.priceK=isNaN(priceBase)?it.priceK:Math.round(priceBase);
+
+          if(hasSizes){
+            const sizes = readDynamicSizesFromEditor('it-sizes-editor');
+            if (!sizes.length) { Toast.error('❌ Cần ít nhất 1 size hợp lệ'); return; }
+            it.hasSizes=true;
+            it.availableSizes=sizes;
+            const defaultEntry = sizes.find(function (s) { return s.isDefault; }) || sizes[0];
+            it.defaultSize=defaultEntry.label;
+            it.sizes = sizes.reduce(function (acc, s) { acc[s.label] = s.priceK; return acc; }, {});
+            it.priceK=defaultEntry.priceK;
+          } else {
+            it.hasSizes=false;
+            it.availableSizes=[];
+            it.sizes={};
+            it.defaultSize='';
+          }
+          
           it.desc=qs('#it-desc').value.trim(); it.cat=qs('#it-cat').value;
           const fileInput=qs('#it-img');
           let loadingToast = null;
@@ -1166,18 +1178,131 @@ const AdminState = (() => {
       row.appendChild(left); row.appendChild(r); root.appendChild(row);
     });
   }
+
+  function readDynamicSizesFromEditor(editorId) {
+    const editor = qs('#' + editorId);
+    if (!editor) return [];
+    const rows = Array.from(editor.querySelectorAll('[data-size-row]'));
+    const parsed = rows.map(function (row) {
+      const labelInput = row.querySelector('[data-size-label]');
+      const priceInput = row.querySelector('[data-size-price]');
+      const defaultInput = row.querySelector('[data-size-default]');
+      const label = String((labelInput && labelInput.value) || '').trim();
+      const priceK = Number(priceInput && priceInput.value);
+      if (!label || !Number.isFinite(priceK) || priceK <= 0) return null;
+      return { label: label, priceK: Math.round(priceK), isDefault: !!(defaultInput && defaultInput.checked) };
+    }).filter(Boolean);
+    if (!parsed.length) return [];
+    if (!parsed.some(function (s) { return s.isDefault; })) parsed[0].isDefault = true;
+    return parsed;
+  }
+
   function openModal(title, fields, onOk){
     const m=qs('#modal'); const t=qs('#modal-title'); const b=qs('#modal-body'); const ok=qs('#modal-ok'); const cc=qs('#modal-cancel');
     t.textContent=title; b.innerHTML='';
     const inputCls='w-full rounded-lg border border-white/20 bg-gray-700 text-gray-200 p-2 placeholder-gray-500';
     fields.forEach(f=>{
       if(f.type==='input'){ const i=el('input',inputCls,{toString:()=>''}); i.id=f.id; i.value=f.value||''; i.placeholder=f.placeholder||''; b.appendChild(i); }
-      else if(f.type==='select'){ const s=el('select',inputCls); s.id=f.id; (f.options||[]).forEach(o=>{ const op=document.createElement('option'); op.value=o.value; op.textContent=o.label; s.appendChild(op); }); s.value=f.value||''; b.appendChild(s); }
+      else if(f.type==='select'){
+        const s=el('select',inputCls);
+        s.id=f.id;
+        if (f.placeholder) {
+          const ph = document.createElement('option');
+          ph.value = '';
+          ph.textContent = f.placeholder;
+          ph.disabled = true;
+          ph.selected = !f.value;
+          s.appendChild(ph);
+        }
+        (f.options||[]).forEach(o=>{ const op=document.createElement('option'); op.value=o.value; op.textContent=o.label; s.appendChild(op); });
+        s.value=f.value||'';
+        b.appendChild(s);
+      }
       else if(f.type==='text'){ const d=el('div','text-sm text-gray-400',f.value||''); d.id=f.id; b.appendChild(d); }
-      else if(f.type==='file'){ 
+      else if(f.type==='checkbox'){
+        const wrapper=el('div','flex items-center gap-2');
+        const input=el('input','',{toString:()=>''});
+        input.type='checkbox';
+        input.id=f.id;
+        input.checked=f.value||false;
+        const label=el('label','text-sm text-gray-300 cursor-pointer');
+        label.htmlFor=f.id;
+        label.textContent=f.label||'';
+        wrapper.appendChild(input);
+        wrapper.appendChild(label);
+        b.appendChild(wrapper);
+      }
+      else if(f.type==='sizes-editor'){
+        const block=el('div','space-y-2');
+        block.id=f.id+'-block';
+        const head=el('div','flex items-center justify-between');
+        head.appendChild(el('div','text-sm text-gray-300','Danh sách size'));
+        const addBtn=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs','+ Thêm size');
+        addBtn.type='button';
+        head.appendChild(addBtn);
+
+        const editor=el('div','space-y-2');
+        editor.id=f.id;
+
+        function addSizeRow(seed) {
+          const row=el('div','grid grid-cols-12 gap-2 items-center');
+          row.setAttribute('data-size-row','1');
+
+          const nameWrap=el('div','col-span-5');
+          const nameInput=el('input',inputCls,{toString:()=>''});
+          nameInput.setAttribute('data-size-label','1');
+          nameInput.placeholder='Tên size (vd: 350ml)';
+          nameInput.value=(seed && seed.label) || '';
+          nameWrap.appendChild(nameInput);
+
+          const priceWrap=el('div','col-span-3');
+          const priceInput=el('input',inputCls,{toString:()=>''});
+          priceInput.setAttribute('data-size-price','1');
+          priceInput.type='number';
+          priceInput.min='1';
+          priceInput.placeholder='Giá k';
+          priceInput.value=String((seed && seed.priceK) || '');
+          priceWrap.appendChild(priceInput);
+
+          const defaultWrap=el('label','col-span-3 flex items-center gap-2 text-xs text-gray-300 cursor-pointer');
+          const defaultInput=el('input','',{toString:()=>''});
+          defaultInput.type='radio';
+          defaultInput.name=f.id+'-default';
+          defaultInput.setAttribute('data-size-default','1');
+          defaultInput.checked=!!(seed && seed.isDefault);
+          defaultWrap.appendChild(defaultInput);
+          defaultWrap.appendChild(el('span','','Mặc định'));
+
+          const removeWrap=el('div','col-span-1 flex justify-end');
+          const removeBtn=el('button','w-8 h-8 rounded-lg border border-red-500/30 text-red-300 hover:bg-red-500/10','×');
+          removeBtn.type='button';
+          removeBtn.addEventListener('click', function () {
+            row.remove();
+          });
+          removeWrap.appendChild(removeBtn);
+
+          row.appendChild(nameWrap);
+          row.appendChild(priceWrap);
+          row.appendChild(defaultWrap);
+          row.appendChild(removeWrap);
+          editor.appendChild(row);
+        }
+
+        const seeds = Array.isArray(f.value) && f.value.length ? f.value : [{ label: '', priceK: '', isDefault: true }];
+        seeds.forEach(function (seed) { addSizeRow(seed); });
+
+        addBtn.addEventListener('click', function () {
+          addSizeRow({ label: '', priceK: '', isDefault: false });
+        });
+
+        block.appendChild(head);
+        block.appendChild(editor);
+        b.appendChild(block);
+      }
+      else if(f.type==='file'){
         const wrapper=el('div','space-y-2');
         const input=el('input',inputCls); input.type='file'; input.id=f.id; input.accept=f.accept||'image/*'; input.placeholder=f.placeholder||'';
-        const preview=el('img','w-full rounded-lg border border-white/20 hidden'); preview.id=f.id+'-preview';
+        const preview=el('img','w-full max-h-48 object-contain rounded-lg border border-white/20 bg-gray-900/40 hidden'); preview.id=f.id+'-preview';
         const fileInfo=el('div','text-xs text-gray-400'); fileInfo.id=f.id+'-info';
         
         // Show existing image if provided
@@ -1198,6 +1323,22 @@ const AdminState = (() => {
         b.appendChild(wrapper);
       }
     });
+
+    fields.forEach(function (f) {
+      if (f.type !== 'sizes-editor' || !f.dependsOn) return;
+      const dep = qs('#' + f.dependsOn);
+      const block = qs('#' + f.id + '-block');
+      const basePriceInput = qs('#it-price');
+      if (!dep || !block) return;
+      const syncVisibility = function () {
+        const hasSizes = !!dep.checked;
+        block.classList.toggle('hidden', !hasSizes);
+        if (basePriceInput) basePriceInput.classList.toggle('opacity-70', hasSizes);
+      };
+      dep.addEventListener('change', syncVisibility);
+      syncVisibility();
+    });
+
     m.classList.remove('hidden');
     function done(){ m.classList.add('hidden'); ok.removeEventListener('click', handler); cc.removeEventListener('click', cancel); }
     async function handler(){ if(onOk) { await onOk(); } done(); }
@@ -1211,13 +1352,18 @@ const AdminState = (() => {
     ], ()=>{ const n=qs('#cat-name').value.trim(); if(!n) return; categories.push({id:'cat-'+Date.now(),name:n}); persistMenu(); renderCategories(); }));
     addItem&&addItem.addEventListener('click', ()=>openModal('Thêm món',[
       {type:'input',id:'it-name',placeholder:'Tên món'},
-      {type:'input',id:'it-price',placeholder:'Giá (k)'},
+      {type:'checkbox',id:'it-has-sizes',value:false,label:'Sản phẩm có size?'},
+      {type:'input',id:'it-price',placeholder:'Giá mặc định (k)'},
+      {type:'sizes-editor',id:'it-sizes-editor',value:[{ label: 'Size M', priceK: 35, isDefault: true }],dependsOn:'it-has-sizes'},
       {type:'input',id:'it-desc',placeholder:'Mô tả'},
       {type:'file',id:'it-img',placeholder:'Chọn ảnh', accept:'image/*'},
-      {type:'select',id:'it-cat',options:categories.map(c=>({value:c.id,label:c.name}))}
+      {type:'select',id:'it-cat',placeholder:'Chọn danh mục cho món cần thêm',options:categories.map(c=>({value:c.id,label:c.name}))}
     ], async()=>{
       const name=qs('#it-name').value.trim(); const p=Number(qs('#it-price').value||'0'); const desc=qs('#it-desc').value.trim(); const cat=qs('#it-cat').value;
-      if(!name||isNaN(p)||p<=0) { Toast.error('❌ Tên và giá không hợp lệ'); return; }
+      const hasSizes=qs('#it-has-sizes').checked;
+      if(!name) { Toast.error('❌ Tên món không hợp lệ'); return; }
+      if(!cat) { Toast.error('❌ Vui lòng chọn danh mục cho món'); return; }
+      if(!hasSizes && (isNaN(p)||p<=0)) { Toast.error('❌ Giá mặc định không hợp lệ'); return; }
       let img='';
       const fileInput=qs('#it-img'); 
       let loadingToast = null;
@@ -1227,7 +1373,25 @@ const AdminState = (() => {
         if(loadingToast) Toast.dismiss(loadingToast);
         if(!img){ Toast.error('❌ Nén ảnh thất bại'); return; }
       }
-      items.push({id:'it-'+Date.now(), name, priceK:Math.round(p), desc, img, cat, visible:true});
+      
+      const newItem={id:'it-'+Date.now(), name, priceK:Math.round(p || 0), desc, img, cat, visible:true};
+      if(hasSizes){
+        const sizes = readDynamicSizesFromEditor('it-sizes-editor');
+        if (!sizes.length) { Toast.error('❌ Cần ít nhất 1 size hợp lệ'); return; }
+        newItem.hasSizes=true;
+        newItem.availableSizes=sizes;
+        const defaultEntry = sizes.find(function (s) { return s.isDefault; }) || sizes[0];
+        newItem.defaultSize=defaultEntry.label;
+        newItem.sizes = sizes.reduce(function (acc, s) { acc[s.label] = s.priceK; return acc; }, {});
+        newItem.priceK=defaultEntry.priceK;
+      } else {
+        newItem.hasSizes=false;
+        newItem.availableSizes=[];
+        newItem.sizes={};
+        newItem.defaultSize='';
+      }
+      
+      items.push(newItem);
       persistMenu(); renderItems(); Toast.success('✓ Thêm món thành công');
     }));
     renderCategories(); renderItems();

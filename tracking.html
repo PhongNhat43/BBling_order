@@ -296,7 +296,7 @@
       const items = data?.items || []
       const customer = data?.customer || {}
       const method = data?.method || 'cash'
-      const total = data?.totalK ? data.totalK * 1000 : items.reduce((s, i) => s + (i.qty || 0) * (i.priceK || 0) * 1000, 0)
+      const total = data?.totalK ? data.totalK * 1000 : items.reduce((s, i) => s + (i.qty || 0) * ((i.unitPriceK || i.priceK) || 0) * 1000, 0)
 
       // Order ID
       const orderIdEl = document.getElementById('order-id')
@@ -327,10 +327,12 @@
         thumb.onerror = function () { thumb.src = PLACEHOLDER_IMG }
         const info = document.createElement('div')
         info.className = 'flex-1 min-w-0'
-        info.innerHTML = '<div class="text-sm font-medium truncate">' + (i.qty || 1) + ' × ' + i.name + '</div>'
+        const unitPrice = i.unitPriceK || i.priceK || 0
+        const nameDisplay = (i.qty || 1) + ' × ' + i.name + (i.size ? ' (Size ' + i.size + ')' : '')
+        info.innerHTML = '<div class="text-sm font-medium truncate">' + nameDisplay + '</div>'
         const pr = document.createElement('div')
         pr.className = 'text-sm font-semibold text-accent flex-shrink-0'
-        pr.textContent = formatVND((i.qty || 1) * (i.priceK || 0))
+        pr.textContent = formatVND((i.qty || 1) * unitPrice)
         row.appendChild(thumb)
         row.appendChild(info)
         row.appendChild(pr)
@@ -504,7 +506,9 @@
         var methodLabel = data.method === 'cash' ? '💵 Tiền mặt' : '🏦 Chuyển khoản';
         var totalFormatted = Number(data.totalVND).toLocaleString('vi-VN') + 'đ';
         var itemLines = (data.items || []).map(function (i) {
-          return '  • ' + i.qty + ' x ' + i.name + ' (' + (i.priceK * 1000).toLocaleString('vi-VN') + 'đ/món)';
+          const unitPrice = i.unitPriceK || i.priceK || 0;
+          const sizeLabel = i.size ? ' [Size ' + i.size + ']' : '';
+          return '  • ' + i.qty + ' x ' + i.name + sizeLabel + ' (' + (unitPrice * 1000).toLocaleString('vi-VN') + 'đ/món)';
         }).join('\n');
         var adminUrl = location.origin + '/admin-dashboard.html';
         var addrParts = [customer.address, customer.ward, customer.district, customer.city].filter(Boolean);

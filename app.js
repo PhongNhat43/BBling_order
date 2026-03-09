@@ -67,11 +67,13 @@ function renderMenu() {
   });
 }
 
-let modalState = { id: null, qty: 1, opts: new Set(), note: '' };
+let modalState = { id: null, qty: 1, opts: new Set(), note: '', size: null };
 const modalEl = document.getElementById('product-modal');
 const modalSheet = modalEl.querySelector('div.absolute');
 const modalName = document.getElementById('modal-name');
 const modalPrice = document.getElementById('modal-price');
+const modalSizeSection = document.getElementById('modal-size-section');
+const modalSizeOptions = document.getElementById('modal-size-options');
 const modalImg = document.getElementById('modal-img');
 const modalDesc = document.getElementById('modal-desc');
 const qtyDec = document.getElementById('qty-dec');
@@ -84,23 +86,97 @@ const modalClose = document.getElementById('modal-close');
 function lockScroll() { document.body.style.overflow = 'hidden'; }
 function unlockScroll() { document.body.style.overflow = ''; }
 
+function getSelectedUnitPriceK(item) {
+  if (!item) return 0;
+  return getItemPriceK(item, modalState.size);
+}
+
+function getRenderableSizes(item) {
+  if (!item) return [];
+  return getItemAvailableSizes(item);
+}
+
 function updateModalAddText(priceK) {
   const total = Math.max(0, modalState.qty) * priceK;
   modalAdd.textContent = total > 0 ? `Thêm vào giỏ hàng - ${formatVND(total)}` : 'Thêm vào giỏ hàng';
 }
 
+function updateModalCtaState(item) {
+  const requiresSize = getRenderableSizes(item).length > 0;
+  const sizeSelected = !!modalState.size;
+  const canAdd = !requiresSize || sizeSelected;
+  modalAdd.disabled = !canAdd;
+  modalAdd.classList.toggle('opacity-50', !canAdd);
+  modalAdd.classList.toggle('cursor-not-allowed', !canAdd);
+}
+
+function refreshModalPricing() {
+  const item = findItemById(modalState.id);
+  if (!item) return;
+  if (getRenderableSizes(item).length > 0 && !modalState.size) {
+    modalPrice.textContent = 'Vui lòng chọn size sản phẩm';
+    modalAdd.textContent = 'Thêm vào giỏ hàng';
+  } else {
+    const unitPriceK = getSelectedUnitPriceK(item);
+    modalPrice.textContent = formatVND(unitPriceK);
+    updateModalAddText(unitPriceK);
+  }
+  updateModalCtaState(item);
+}
+
+function renderSizeOptions(item) {
+  if (!modalSizeSection || !modalSizeOptions) return;
+  const sizeOptions = getRenderableSizes(item);
+  const hasSizes = sizeOptions.length > 0;
+  modalSizeSection.classList.toggle('hidden', !hasSizes);
+  modalSizeOptions.className = hasSizes ? 'flex flex-wrap gap-2' : 'grid grid-cols-3 gap-2';
+  modalSizeOptions.innerHTML = '';
+  if (!hasSizes) return;
+
+  sizeOptions.forEach((sizeItem) => {
+    const sizeLabel = sizeItem.label;
+    const priceK = getItemPriceK(item, sizeLabel);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.size = sizeLabel;
+    btn.className = 'min-h-[44px] min-w-[96px] px-3 py-2 rounded-xl border text-center transition bg-[#F7EFE7] border-primary/20 hover:shadow-lg active:scale-95';
+    btn.innerHTML = `<div class="text-xs tracking-[0.08em]">${sizeLabel}</div><div class="size-price text-[11px] text-primary/70 mt-0.5">${formatVND(priceK)}</div>`;
+    btn.addEventListener('click', () => {
+      modalState.size = sizeLabel;
+      modalSizeOptions.querySelectorAll('button').forEach((el) => {
+        el.classList.remove('bg-primary', 'text-cream', 'border-primary', 'shadow-soft');
+        const priceEl = el.querySelector('.size-price');
+        if (priceEl) {
+          priceEl.classList.remove('text-cream/90');
+          priceEl.classList.add('text-primary/70');
+        }
+        el.classList.add('bg-[#F7EFE7]', 'border-primary/20');
+      });
+      btn.classList.remove('bg-[#F7EFE7]', 'border-primary/20');
+      btn.classList.add('bg-primary', 'text-cream', 'border-primary', 'shadow-soft');
+      const activePrice = btn.querySelector('.size-price');
+      if (activePrice) {
+        activePrice.classList.remove('text-primary/70');
+        activePrice.classList.add('text-cream/90');
+      }
+      refreshModalPricing();
+    });
+    modalSizeOptions.appendChild(btn);
+  });
+}
+
 function openProduct(id) {
   const item = findItemById(id);
   if (!item) return;
-  modalState = { id, qty: 1, opts: new Set(), note: '' };
+  modalState = { id, qty: 1, opts: new Set(), note: '', size: null };
   modalName.textContent = item.name;
-  modalPrice.textContent = formatVND(item.priceK);
   modalImg.src = item.img;
   setImgFallback(modalImg);
   modalDesc.textContent = item.desc || '';
   qtyVal.textContent = '1';
   modalNote.value = '';
-  updateModalAddText(item.priceK);
+  renderSizeOptions(item);
+  refreshModalPricing();
   lockScroll();
   const header = document.getElementById('main-header');
   // Only hide header on mobile (≤768px)
@@ -123,7 +199,7 @@ function closeProduct() {
     modalEl.classList.add('pointer-events-none');
     unlockScroll();
     // Reset modal state
-    modalState = { id: null, qty: 1, opts: new Set(), note: '' };
+    modalState = { id: null, qty: 1, opts: new Set(), note: '', size: null };
   }, 300);
 }
 
@@ -143,13 +219,13 @@ qtyInc.addEventListener('click', () => {
   const item = findItemById(modalState.id);
   modalState.qty += 1;
   qtyVal.textContent = String(modalState.qty);
-  if (item) updateModalAddText(item.priceK);
+  if (item) refreshModalPricing();
 });
 qtyDec.addEventListener('click', () => {
   const item = findItemById(modalState.id);
   modalState.qty = Math.max(0, modalState.qty - 1);
   qtyVal.textContent = String(modalState.qty);
-  if (item) updateModalAddText(item.priceK);
+  if (item) refreshModalPricing();
 });
 
 modalEl.querySelectorAll('.opt').forEach(btn => {
@@ -168,11 +244,25 @@ modalEl.querySelectorAll('.opt').forEach(btn => {
 modalAdd.addEventListener('click', () => {
   const item = findItemById(modalState.id);
   if (!item) return;
+  if (getRenderableSizes(item).length > 0 && !modalState.size) return;
   if (!modalState.qty || modalState.qty <= 0) return;
+  const unitPriceK = getSelectedUnitPriceK(item);
   const optsArr = Array.from(modalState.opts).sort();
   const note = modalNote.value.trim();
-  const key = `${item.id}|${optsArr.join(',')}|${note}`;
-  if (!state.cart[key]) state.cart[key] = { ...item, qty: 0, options: optsArr, note };
+  const sizeLabel = modalState.size || '';
+  const sizeKey = sizeLabel.replace(/\|/g, '/');
+  const key = `${item.id}|${sizeKey}|${optsArr.join(',')}|${note}`;
+  if (!state.cart[key]) {
+    state.cart[key] = {
+      ...item,
+      qty: 0,
+      options: optsArr,
+      note,
+      size: sizeLabel,
+      unitPriceK,
+      priceK: unitPriceK
+    };
+  }
   state.cart[key].qty += modalState.qty;
   closeProduct();
   syncCartUI();
@@ -188,7 +278,7 @@ const closeSheet = document.getElementById('close-sheet');
 const confirmOrder = document.getElementById('confirm-order');
 
 function calcTotal() {
-  return Object.values(state.cart).reduce((s, it) => s + it.priceK * it.qty, 0);
+  return Object.values(state.cart).reduce((s, it) => s + (it.unitPriceK || it.priceK || 0) * it.qty, 0);
 }
 
 function syncCartUI() {
@@ -238,12 +328,15 @@ function renderSheet() {
       const textCol = document.createElement('div');
       const name = document.createElement('div');
       name.className = 'font-medium';
-      const nameText = it.options && it.options.length ? `${it.name} · ${it.options.join(', ')}` : it.name;
+      const nameParts = [it.name];
+      if (it.size) nameParts.push(`size ${it.size}`);
+      if (it.options && it.options.length) nameParts.push(it.options.join(', '));
+      const nameText = nameParts.join(' · ');
       name.textContent = nameText;
 
       const sub = document.createElement('div');
       sub.className = 'text-xs text-primary/70';
-      sub.textContent = `${formatVND(it.priceK)} x ${it.qty}`;
+      sub.textContent = `${formatVND(it.unitPriceK || it.priceK || 0)} x ${it.qty}`;
 
       textCol.appendChild(name);
       textCol.appendChild(sub);
@@ -298,7 +391,15 @@ orderNow.addEventListener('click', openSheet);
 closeSheet.addEventListener('click', closeSheetFn);
 confirmOrder.addEventListener('click', () => {
   const note = document.getElementById('note').value.trim();
-  const items = Object.values(state.cart).map(({ id, name, priceK, qty, img }) => ({ id, name, priceK, qty, img }));
+  const items = Object.values(state.cart).map(({ id, name, size, unitPriceK, priceK, qty, img }) => ({
+    id,
+    name,
+    size: size || null,
+    unitPriceK: unitPriceK || priceK,
+    priceK: unitPriceK || priceK,
+    qty,
+    img
+  }));
   if (!items.length) { closeSheetFn(); return; }
   const bill = 'BILL' + Date.now().toString().slice(-6);
   const totalK = calcTotal();
