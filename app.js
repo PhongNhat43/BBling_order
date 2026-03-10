@@ -333,6 +333,7 @@ modalAdd.addEventListener('click', () => {
 const cartBar = document.getElementById('cart-bar');
 const cartTotal = document.getElementById('cart-total');
 const sheet = document.getElementById('sheet');
+const sheetBackdrop = document.getElementById('sheet-backdrop');
 const sheetList = document.getElementById('sheet-list');
 const sheetTotal = document.getElementById('sheet-total');
 const orderNow = document.getElementById('order-now');
@@ -443,14 +444,21 @@ function renderSheet() {
 
 function openSheet() {
   renderSheet();
+  if (sheetBackdrop) sheetBackdrop.classList.remove('hidden');
   sheet.classList.remove('translate-y-full');
 }
 function closeSheetFn() {
   sheet.classList.add('translate-y-full');
+  if (sheetBackdrop) {
+    setTimeout(() => {
+      sheetBackdrop.classList.add('hidden');
+    }, 220);
+  }
 }
 
 orderNow.addEventListener('click', openSheet);
 closeSheet.addEventListener('click', closeSheetFn);
+if (sheetBackdrop) sheetBackdrop.addEventListener('click', closeSheetFn);
 confirmOrder.addEventListener('click', () => {
   const note = document.getElementById('note').value.trim();
   const items = Object.values(state.cart).map(({ id, name, size, unitPriceK, priceK, qty, img }) => ({

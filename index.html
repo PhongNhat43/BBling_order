@@ -133,6 +133,18 @@
         max-width: 360px;
       }
 
+      #main-header .mobile-brand {
+        display: flex;
+        align-items: baseline;
+        gap: 0.35rem;
+      }
+
+      #main-header .mobile-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
       button,
       .opt,
       .add {
@@ -169,23 +181,28 @@
 <body class="min-h-full bg-cream text-primary font-sans paper">
   <div class="relative min-h-screen botanical">
     <header id="main-header" class="sticky top-0 z-30 px-4 pt-6 pb-4 md:px-8 transition-transform duration-300">
-      <div class="mx-auto max-w-2xl text-center">
+      <div class="mx-auto max-w-2xl">
         <div
-          class="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 px-4 py-2.5 rounded-2xl bg-white/70 backdrop-blur shadow-soft">
-          <a href="index.html" class="text-2xl md:text-3xl font-bold font-serif italic tracking-wide">B.BLING</a>
-          <span class="text-xs uppercase tracking-[0.18em] text-primary/70">Coffee &amp; Eatery</span>
-          <span class="text-xs px-3 py-1 rounded-full bg-accent text-white">0985.679.565</span>
-          <button id="chat-toggle-mobile" type="button" aria-label="Mở chat hỗ trợ"
-            class="md:hidden w-10 h-10 rounded-full bg-primary text-cream inline-flex items-center justify-center hover:shadow-lg active:scale-95 transition">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-              stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M8 10h8M8 14h5m-1 6l3-3h3a4 4 0 004-4V7a4 4 0 00-4-4H7a4 4 0 00-4 4v6a4 4 0 004 4h4z" />
-            </svg>
-          </button>
-          <a href="tracking.html?mode=search"
-            class="text-xs px-3 py-1 rounded-full bg-white text-primary border border-primary/20 shadow-soft hover:shadow-lg active:scale-95 transition">Tra
-            cứu đơn</a>
+          class="flex items-center justify-between md:flex-wrap md:justify-center gap-x-3 gap-y-2 px-4 py-2.5 rounded-2xl bg-white/70 backdrop-blur shadow-soft">
+          <div class="mobile-brand md:contents">
+            <a href="index.html" class="text-2xl md:text-3xl font-bold font-serif italic tracking-wide">B.BLING</a>
+            <span class="hidden md:inline text-xs uppercase tracking-[0.18em] text-primary/70">Coffee &amp; Eatery</span>
+          </div>
+          <span class="hidden md:inline-flex text-xs px-3 py-1 rounded-full bg-accent text-white">0985.679.565</span>
+          <div class="mobile-actions md:contents">
+            <a href="tracking.html?mode=search"
+              class="text-xs px-3 py-2 rounded-full bg-white text-primary border border-primary/20 shadow-soft hover:shadow-lg active:scale-95 transition min-h-[40px] inline-flex items-center">Tra
+              cứu</a>
+            <button id="chat-toggle-mobile" type="button" aria-label="Mở chat hỗ trợ"
+              class="md:hidden px-3 py-2 rounded-full bg-primary text-cream inline-flex items-center gap-1.5 text-xs font-semibold hover:shadow-lg active:scale-95 transition min-h-[40px]">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M8 10h8M8 14h5m-1 6l3-3h3a4 4 0 004-4V7a4 4 0 00-4-4H7a4 4 0 00-4 4v6a4 4 0 004 4h4z" />
+              </svg>
+              <span>Chat</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -207,7 +224,7 @@
       </section>
     </main>
 
-    <div id="cart-bar" class="fixed bottom-3 inset-x-3 hidden">
+    <div id="cart-bar" class="fixed bottom-3 inset-x-3 z-[70] hidden">
       <div class="mx-auto max-w-4xl">
         <div
           class="flex flex-col md:flex-row items-center justify-between gap-3 rounded-xl bg-primary/90 backdrop-blur text-cream px-4 py-3 shadow-soft transition-opacity duration-300">
@@ -223,7 +240,9 @@
       </div>
     </div>
 
-    <div id="sheet" class="fixed inset-x-0 bottom-0 translate-y-full transition-transform duration-300">
+    <div id="sheet-backdrop" class="hidden fixed inset-0 z-[79] bg-black/40"></div>
+
+    <div id="sheet" class="fixed inset-x-0 bottom-0 z-[80] translate-y-full transition-transform duration-300">
       <div class="mx-auto max-w-4xl bg-white rounded-t-2xl shadow-soft p-4">
         <div class="flex items-center justify-between mb-2">
           <h3 class="font-serif italic text-lg">Xác nhận đơn</h3>
@@ -246,7 +265,7 @@
     </div>
 
     <button id="chat-toggle"
-      class="hidden md:flex fixed z-50 w-12 h-12 rounded-full bg-accent text-white items-center justify-center shadow-soft transition-shadow relative"
+      class="hidden md:flex fixed z-[95] w-12 h-12 rounded-full bg-accent text-white items-center justify-center shadow-soft transition-shadow relative"
       style="right:16px;bottom:24px;position:fixed">
       <span class="absolute inset-0 rounded-full">
         <span class="animate-ping absolute inset-0 rounded-full bg-accent opacity-30"></span>
@@ -258,7 +277,7 @@
       </svg>
     </button>
     <div id="chat-panel"
-      class="hidden fixed right-6 bottom-28 w-[92%] max-w-[400px] rounded-xl bg-white shadow-soft p-4 z-50">
+      class="hidden fixed right-6 bottom-28 w-[92%] max-w-[400px] rounded-xl bg-white shadow-soft p-4 z-[90]">
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-2">
           <img id="chat-avatar" alt="B.BLING" class="w-8 h-8 rounded-full object-cover border border-primary/10"
@@ -301,13 +320,13 @@
   </div>
   <!-- Product Detail Modal -->
   <div id="product-modal"
-    class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300 modal-animated flex items-end justify-center z-[60]">
+    class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300 modal-animated flex items-end justify-center z-[100]">
     <div
       class="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-full transition-transform duration-300 w-full max-w-2xl modal-animated">
-      <div class="mx-3 mb-3 rounded-2xl bg-white shadow-soft flex flex-col max-h-[85vh]">
+      <div class="mx-3 mb-3 rounded-t-3xl md:rounded-2xl bg-white shadow-soft flex flex-col max-h-[88vh] md:max-h-[85vh]">
 
         <!-- Fixed image + close overlay -->
-        <div class="h-56 bg-gray-100 flex-shrink-0 relative rounded-t-2xl overflow-hidden">
+        <div class="h-[190px] md:h-56 bg-gray-100 flex-shrink-0 relative rounded-t-3xl md:rounded-t-2xl overflow-hidden">
           <img id="modal-img" alt="" class="w-full h-full object-cover">
           <button id="modal-close"
             class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center text-xl leading-none hover:bg-black/60 active:scale-95 transition"
@@ -360,7 +379,7 @@
         </div>
 
         <!-- Sticky add-to-cart button -->
-        <div class="flex-shrink-0 px-4 pb-4 pt-3 border-t border-primary/10">
+        <div class="sticky bottom-0 bg-white flex-shrink-0 px-4 pb-4 pt-3 border-t border-primary/10">
           <button id="modal-add"
             class="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:shadow-lg active:scale-95 transition">Thêm
             vào giỏ hàng</button>
@@ -370,7 +389,7 @@
     </div>
   </div>
 
-  <footer class="mt-8 pt-10 pb-16 md:py-16 border-t border-primary/20 bg-cream text-primary relative z-10">
+  <footer class="mt-8 pt-10 pb-16 md:py-16 border-t border-primary/20 bg-cream text-primary relative z-0">
     <div class="max-w-6xl mx-auto px-6 md:px-8">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-12">
         <!-- Brand & Address -->
