@@ -1,32 +1,71 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helper functions
+    // Kiểm tra user có trong admin_users
+    function isAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/admin_users/$(request.auth.token.email));
+    }
+
+    // Admin gốc luôn toàn quyền bất kể dữ liệu role trong Firestore
+    function isBootstrapAdmin() {
+      return request.auth != null && request.auth.token.email == 'phongnhat43@gmail.com';
+    }
+
+    // Full quyền: admin hoặc super_admin hoặc admin gốc
+    function isFullAdmin() {
+      return request.auth != null && (
+        isBootstrapAdmin() ||
+        get(/databases/$(database)/documents/admin_users/$(request.auth.token.email)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/admin_users/$(request.auth.token.email)).data.role == 'super_admin'
+      );
+    }
+
+    // Staff (chỉ duyệt đơn/chat)
+    function isStaff() {
+      return request.auth != null &&
+             get(/databases/$(database)/documents/admin_users/$(request.auth.token.email)).data.role == 'staff';
+    }
+
+    // Orders: staff/admin đều có thể xử lý đơn
     match /orders/{orderId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isStaff() || isFullAdmin();
       match /messages/{msgId} {
-        allow read, write: if true;
+        allow read: if isStaff() || isFullAdmin();
+        allow write: if isStaff() || isFullAdmin();
       }
     }
+
+    // Menu: chỉ full admin sửa
     match /menu/{document=**} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isFullAdmin();
     }
+
+    // Test collection: full admin only
     match /test/{document=**} {
-      allow read, write: if true;
+      allow read, write: if isFullAdmin();
     }
+
+    // Guest Chats: staff/admin đều reply
     match /guestChats/{document=**} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isStaff() || isFullAdmin();
     }
-    // Store-wide settings — payment_config is publicly readable (needed by payment.html),
-    // telegram_config requires auth (contains bot token)
+
+    // Settings: full admin only
     match /settings/{docId} {
-      allow read: if docId == 'payment_config' || request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if docId == 'payment_config' || isAdmin();
+      allow write: if isFullAdmin();
     }
-    // Admin user management — authenticated users can read (for login check),
-    // write is restricted to authenticated users (dashboard auth guard handles role enforcement)
+
+    // Admin users: full admin only
     match /admin_users/{email} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow write: if isFullAdmin();
     }
   }
 }

@@ -134,10 +134,10 @@
                 placeholder="Nhập địa chỉ giao hàng cụ thể..." />
               <div id="err-address" class="hidden text-xs text-red-600 mt-1">Vui lòng nhập địa chỉ nhận hàng.</div>
             </div>
-            <!-- Section 2: Vị trí ghim bản đồ (tuỳ chọn) -->
+            <!-- Section 2: Vị trí ghim bản đồ (bắt buộc để thanh toán) -->
             <div class="rounded-xl border border-primary/15 bg-cream/30 px-3 pt-2.5 pb-3">
               <div class="text-xs font-semibold text-primary/70 mb-0.5">📍 Vị trí giao hàng <span
-                  class="text-xs text-primary/40 font-normal">(Tuỳ chọn)</span></div>
+                  class="text-xs text-red-600 font-normal">(Bắt buộc)</span></div>
               <p class="text-xs text-primary/50 mb-2">Ghim vị trí để mở khoá thanh toán chuyển khoản (trong bán kính 2km
                 từ quán)</p>
               <button type="button" id="open-map-btn"
@@ -159,19 +159,14 @@
         </div>
         <div>
           <div class="text-sm mb-2 font-semibold">Hình thức thanh toán</div>
-          <div class="flex items-center gap-2">
-            <button id="btn-cash"
-              class="flex-1 px-3 py-3 min-h-[48px] rounded-xl border border-primary/20 bg-white hover:shadow-lg text-sm font-medium transition">💵
-              Tiền mặt</button>
-            <button id="btn-transfer"
-              class="flex-1 px-3 py-3 min-h-[48px] rounded-xl border border-primary/20 bg-white hover:shadow-lg text-sm font-medium transition">🏦
-              Chuyển khoản</button>
+          <div class="px-3 py-3 min-h-[48px] rounded-xl border border-success/30 bg-green-50 text-success text-sm font-semibold text-center">
+            🏦 Chuyển khoản ngân hàng
           </div>
           <div id="payment-restriction-notice"
             class="text-xs px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 mt-2">
-            ⚠️ Hãy ghím vị trí trên bản đồ để mở khóa thanh toán chuyển khoản.
+            ⚠️ Hãy ghim vị trí trên bản đồ để kiểm tra bán kính phục vụ 2km và mở khóa thanh toán.
           </div>
-          <div id="err-method" class="hidden text-xs text-red-600 mt-1">Vui lòng chọn phương thức thanh toán.</div>
+          <div id="err-location-gate" class="hidden text-xs text-red-600 mt-1">Vui lòng ghim vị trí hợp lệ trong bán kính 2km để tiếp tục thanh toán.</div>
         </div>
       </div>
 
@@ -325,11 +320,6 @@
         qrImg.closest && qrImg.closest('.flex') && qrImg.closest('.flex').classList.add('hidden')
         qrLoadingMsg.textContent = '⚠️ Chưa cấu hình thanh toán chuyển khoản. Liên hệ hotline.'
         qrLoadingMsg.className = 'text-xs text-amber-700 text-center mt-2'
-        // Disable transfer button entirely
-        if (btnTransfer) {
-          btnTransfer.disabled = true
-          btnTransfer.classList.add('opacity-40', 'cursor-not-allowed')
-        }
         return
       }
       var addInfo = encodeURIComponent(content)
@@ -377,22 +367,19 @@
     document.getElementById('copy-bill').addEventListener('click', () => copyText(bill))
     document.getElementById('copy-amount').addEventListener('click', () => copyText(String(amount)))
 
-    let method = null
-    const btnCash = document.getElementById('btn-cash')
-    const btnTransfer = document.getElementById('btn-transfer')
+    const method = 'transfer'
     const sectionTransfer = document.getElementById('section-transfer')
     const submitBtn = document.getElementById('submit-order')
     const nameEl = document.getElementById('cust-name')
     const phoneEl = document.getElementById('cust-phone')
     const addrEl = document.getElementById('cust-address')
     const receiptInput = document.getElementById('receipt')
-    const receiptName = document.getElementById('receipt-name')
-    const receiptPreview = document.getElementById('receipt-preview')
     const errName = document.getElementById('err-name')
     const errPhone = document.getElementById('err-phone')
     const errAddr = document.getElementById('err-address')
-    const errMethod = document.getElementById('err-method')
+    const errLocationGate = document.getElementById('err-location-gate')
     const errReceipt = document.getElementById('err-receipt')
+    let transferUnlocked = false
 
 
     function isValidPhone(s) {
@@ -403,24 +390,18 @@
     function validateAndShow() {
       const nameOk = nameEl.value.trim().length > 0
       const phoneOk = isValidPhone(phoneEl.value)
-      const methodOk = method === 'cash' || method === 'transfer'
-      const receiptOk = method !== 'transfer' || !!(receiptInput.files && receiptInput.files[0])
+      const locationOk = transferUnlocked
+      const receiptOk = !!(receiptInput.files && receiptInput.files[0])
       const addrOk = addrEl.value.trim().length > 0
       // show/hide
       errName.classList.toggle('hidden', nameOk)
       errPhone.classList.toggle('hidden', phoneOk)
-      errMethod.classList.toggle('hidden', methodOk)
+      errLocationGate.classList.toggle('hidden', locationOk)
       errAddr.classList.toggle('hidden', addrOk)
       errReceipt.classList.toggle('hidden', receiptOk)
-      return nameOk && phoneOk && methodOk && receiptOk && addrOk
+      return nameOk && phoneOk && locationOk && receiptOk && addrOk
     }
     ;[nameEl, phoneEl, addrEl].forEach(function (el) { el.addEventListener('input', validateAndShow) })
-
-    btnCash.addEventListener('click', function () { selectMethod('cash') })
-    btnTransfer.addEventListener('click', function () {
-      if (btnTransfer.disabled) return
-      selectMethod('transfer')
-    })
     function handleReceiptFile(f) {
       if (!f) { showReceiptUI(null); validateAndShow(); return }
       const mb = f.size / 1048576
@@ -474,11 +455,12 @@
       const customer = {
         name: nameEl.value.trim(),
         phone: phoneEl.value.trim(),
-        address: addrEl.value.trim(),
+        address: (addrEl.value || '').trim() || (pinnedAddress || ''),
+        pinnedAddress: pinnedAddress || null,
         lat: pinnedLat,
         lng: pinnedLng
       }
-      const status = method === 'cash' ? 'unverified_cash' : 'pending_transfer'
+      const status = 'pending_transfer'
       let saved = null
       try { saved = JSON.parse(sessionStorage.getItem('order_' + bill) || 'null') } catch (e) { }
       if (!saved || !saved.items || !saved.items.length) {
@@ -486,19 +468,17 @@
         return
       }
       let billUrl = ''
-      if (method === 'transfer' && receiptInput.files && receiptInput.files[0]) {
-        try {
-          setSubmitLoading(true, 'Đang nén ảnh...')
-          const compressionTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 30000))
-          billUrl = await Promise.race([
-            ImageUtils.compressReceiptImage(receiptInput.files[0]),
-            compressionTimeout
-          ])
-        } catch (err) {
-          setSubmitLoading(false, 'Gửi đơn hàng')
-          showToast('Nén ảnh biên lai thất bại (' + (err.message || 'unknown error') + '). Hãy thử ảnh khác.', true)
-          return
-        }
+      try {
+        setSubmitLoading(true, 'Đang nén ảnh...')
+        const compressionTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 30000))
+        billUrl = await Promise.race([
+          ImageUtils.compressReceiptImage(receiptInput.files[0]),
+          compressionTimeout
+        ])
+      } catch (err) {
+        setSubmitLoading(false, 'Gửi đơn hàng')
+        showToast('Nén ảnh biên lai thất bại (' + (err.message || 'unknown error') + '). Hãy thử ảnh khác.', true)
+        return
       }
       const orderData = {
         customer,
@@ -506,8 +486,10 @@
         note: saved.note || '',
         totalK: saved.totalK || amount / 1000,
         totalVND: amount,
-        method,
+        method: 'transfer',
         status,
+        distance: pinnedDistKm !== null ? Number(pinnedDistKm.toFixed(3)) : null,
+        coordinates: (pinnedLat !== null && pinnedLng !== null) ? { lat: pinnedLat, lng: pinnedLng } : null,
         billUrl: billUrl || null,
         createdAt: (firebase.firestore.FieldValue && firebase.firestore.FieldValue.serverTimestamp) ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
       }
@@ -552,31 +534,12 @@
       showToast('Đã sao chép hotline', false)
     })
 
-    // ── Payment method helper ──────────────────────────────────────────────────
-    function selectMethod(m) {
-      method = m
-      if (m === 'cash') {
-        sectionTransfer.classList.add('hidden')
-        btnCash.classList.add('bg-success', 'text-white', 'border-success', 'transition-all', 'duration-150')
-        btnCash.classList.remove('bg-white', 'text-primary')
-        btnTransfer.classList.remove('bg-success', 'text-white', 'border-success')
-        btnTransfer.classList.add('bg-white', 'text-primary', 'border-primary/20', 'transition-all', 'duration-150')
-      } else {
-        sectionTransfer.classList.remove('hidden')
-        btnTransfer.classList.add('bg-success', 'text-white', 'border-success', 'transition-all', 'duration-150')
-        btnTransfer.classList.remove('bg-white', 'text-primary')
-        btnCash.classList.remove('bg-success', 'text-white', 'border-success')
-        btnCash.classList.add('bg-white', 'text-primary', 'border-primary/20', 'transition-all', 'duration-150')
-      }
-      validateAndShow()
-    }
-
     // ── Location-based payment restriction ────────────────────────────────
-    var SHOP_LAT = 21.1184207, SHOP_LNG = 105.9669471
+    var SHOP_LOCATION = { lat: 21.1184207, lng: 105.9669471 }
     var pinnedDistKm = null
     var leafletMap = null
 
-    function haversineKm(lat1, lon1, lat2, lon2) {
+    function calculateDistance(lat1, lon1, lat2, lon2) {
       var R = 6371, toR = Math.PI / 180
       var dLat = (lat2 - lat1) * toR, dLon = (lon2 - lon1) * toR
       var a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
@@ -588,23 +551,28 @@
       var notice = document.getElementById('payment-restriction-notice')
       var inRange = pinnedDistKm !== null && pinnedDistKm <= 2
       if (inRange) {
-        btnTransfer.disabled = false
-        btnTransfer.classList.remove('opacity-40', 'cursor-not-allowed')
-        notice.innerHTML = '📍 Cách quán <strong>' + pinnedDistKm.toFixed(1) + 'km</strong> – Miễn phí giao hàng'
+        transferUnlocked = true
+        sectionTransfer.classList.remove('hidden')
+        notice.innerHTML = '✅ Vị trí hợp lệ (<strong>' + pinnedDistKm.toFixed(2) + ' km</strong>). Bạn có thể tiếp tục thanh toán.'
         notice.className = 'text-xs px-3 py-2 rounded-lg bg-green-50 text-green-700 border border-green-200 mt-2'
       } else {
-        btnTransfer.disabled = true
-        btnTransfer.classList.add('opacity-40', 'cursor-not-allowed')
-        var distTxt = pinnedDistKm !== null ? ' (' + pinnedDistKm.toFixed(1) + 'km)' : ''
-        notice.innerHTML = '⚠️ Ngoài phạm vi hỗ trợ thanh toán trước' + distTxt
-          + '. Vui lòng thanh toán tiền mặt khi nhận hàng hoặc liên hệ <strong>Hotline</strong>.'
-        notice.className = 'text-xs px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 mt-2'
-        if (method === 'transfer' || !method) selectMethod('cash')
+        transferUnlocked = false
+        sectionTransfer.classList.add('hidden')
+        if (receiptInput) receiptInput.value = ''
+        showReceiptUI(null)
+        if (pinnedDistKm !== null) {
+          notice.innerHTML = '❌ Rất tiếc, B.BLING chỉ phục vụ trong bán kính 2km từ quán. Vị trí của bạn hiện cách quán <strong>' + pinnedDistKm.toFixed(2) + ' km</strong>.'
+          notice.className = 'text-xs px-3 py-2 rounded-lg bg-red-50 text-red-700 border border-red-200 mt-2'
+        } else {
+          notice.innerHTML = '⚠️ Hãy ghim vị trí trên bản đồ để kiểm tra bán kính phục vụ 2km và mở khóa thanh toán.'
+          notice.className = 'text-xs px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 mt-2'
+        }
       }
+      validateAndShow()
     }
 
     // Pending (in-modal) state & confirmed state
-    var pendingLat = SHOP_LAT, pendingLng = SHOP_LNG, pendingAddress = ''
+    var pendingLat = SHOP_LOCATION.lat, pendingLng = SHOP_LOCATION.lng, pendingAddress = ''
     var pinnedLat = null, pinnedLng = null, pinnedAddress = null
     var geocodeTimer = null
 
@@ -612,7 +580,7 @@
       clearTimeout(geocodeTimer)
       geocodeTimer = setTimeout(function () {
         var label = document.getElementById('map-coords-label')
-        var distKm = haversineKm(lat, lng, SHOP_LAT, SHOP_LNG)
+        var distKm = calculateDistance(lat, lng, SHOP_LOCATION.lat, SHOP_LOCATION.lng)
         var distTxt = distKm <= 2 ? '✓ Trong phạm vi 2km' : '⚠ Cách quán ' + distKm.toFixed(1) + 'km (ngoài 2km)'
         if (label) label.textContent = distTxt + ' – đang tra địa chỉ...'
         fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lng + '&format=json&accept-language=vi', {
@@ -637,20 +605,20 @@
     function updatePinDistance(lat, lng) {
       pendingLat = lat
       pendingLng = lng
-      pinnedDistKm = haversineKm(lat, lng, SHOP_LAT, SHOP_LNG)
+      pinnedDistKm = calculateDistance(lat, lng, SHOP_LOCATION.lat, SHOP_LOCATION.lng)
       reverseGeocode(lat, lng)
     }
 
     function initLeafletMap() {
       if (leafletMap || !window.L) return
-      var startLat = pinnedLat !== null ? pinnedLat : SHOP_LAT
-      var startLng = pinnedLng !== null ? pinnedLng : SHOP_LNG
+      var startLat = pinnedLat !== null ? pinnedLat : SHOP_LOCATION.lat
+      var startLng = pinnedLng !== null ? pinnedLng : SHOP_LOCATION.lng
       leafletMap = L.map('location-map').setView([startLat, startLng], 15)
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors', maxZoom: 19
       }).addTo(leafletMap)
       // Shop marker
-      L.marker([SHOP_LAT, SHOP_LNG], {
+      L.marker([SHOP_LOCATION.lat, SHOP_LOCATION.lng], {
         icon: L.divIcon({
           className: '',
           html: '<div style="background:#3E2723;color:#F2E8DF;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.35)">☕ B.BLING</div>',
@@ -715,20 +683,19 @@
       // Show pinned status
       var statusEl = document.getElementById('pinned-status')
       var inRange = pinnedDistKm !== null && pinnedDistKm <= 2
-      var distTxt = pinnedDistKm !== null ? pinnedDistKm.toFixed(1) + 'km' : ''
+      var distTxt = pinnedDistKm !== null ? pinnedDistKm.toFixed(2) + ' km' : ''
       statusEl.innerHTML = inRange
-        ? '✅ <strong>Trong phạm vi giao hàng</strong> – Cách quán ' + distTxt + '<br><span class="text-primary/60">' + pinnedAddress + '</span>'
-        : '⚠️ Cách quán <strong>' + distTxt + '</strong> (ngoài 2km) – Chỉ thanh toán tiền mặt<br><span class="text-primary/60">' + pinnedAddress + '</span>'
-      statusEl.className = 'mt-2 text-xs rounded-lg px-3 py-2 ' + (inRange ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700')
+        ? '✅ <strong>Vị trí hợp lệ</strong> – Cách quán ' + distTxt + '<br><span class="text-primary/60">' + pinnedAddress + '</span>'
+        : '❌ Cách quán <strong>' + distTxt + '</strong> (ngoài bán kính 2km)<br><span class="text-primary/60">' + pinnedAddress + '</span>'
+      statusEl.className = 'mt-2 text-xs rounded-lg px-3 py-2 ' + (inRange ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700')
       statusEl.classList.remove('hidden')
       closeMapModal()
       applyPaymentRestriction()
-      validateAndShow()
     }
 
     document.getElementById('open-map-btn').addEventListener('click', openMapModal)
 
-    // Initial state: no pin yet → restrict to cash
+    // Initial state: khóa chuyển khoản tới khi ghim vị trí hợp lệ
     applyPaymentRestriction()
   </script>
   <!-- Full-screen map modal -->

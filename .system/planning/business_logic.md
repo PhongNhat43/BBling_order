@@ -7,66 +7,167 @@
 
 ## 2. LUỒNG NGHIỆP VỤ KHÁCH HÀNG (CUSTOMER FLOW) 
 ### A. Màn hình Trang chủ (Menu & Selection) 
-- Hiển thị: Menu chia theo danh mục (Cà phê, Trà, Bánh...). Mỗi món có ảnh thumbnail, tên, giá và mô tả. 
+- Hiển thị: Menu chia theo danh mục (Kinu, Coffee, Dessert...). Mỗi món có ảnh, tên, mô tả, giá và tag (Mới, khác biệt). 
 - Tương tác: Click vào món -> Mở Product Detail Modal. 
-- Trong Modal: Chọn Options (Đường/Đá/Topping), chọn số lượng (+/-). 
-- Bấm "Thêm vào giỏ" -> Lưu vào localStorage. 
-- Giỏ hàng: Hiển thị tổng số tiền và danh sách món đã chọn ở thanh dưới cùng (Bottom Bar). 
+- Trong Modal: Chọn kích cỡ (Size), số lượng (+/-), ghi chú riêng. 
+- Bấm "Thêm vào giỏ" -> Lưu vào sessionStorage với mã bill. 
+- Giỏ hàng: Floating bar dưới cùng hiển thị tổng số tiền, danh sách món, nút Xác nhận. 
+- Support: Hotline (0985.679.565) và Chat floating button ở góc phải. 
 
-### B. Luồng Thanh toán mới (New Payment Flow) - [MỚI CẬP NHẬT] 
-#### Bước 1: Thu thập thông tin: 
-- Form bắt buộc: Tên khách hàng, Số điện thoại (Validation 10 số). 
-- Tùy chọn: Địa chỉ giao hàng hoặc Số bàn. 
+### B. Luồng Thanh toán (Payment Flow) 
+#### Bước 1: Thông tin khách hàng (Bắt buộc): 
+- Tên khách hàng 
+- Số điện thoại (Định dạng: 0xxxxxxxxx hoặc +84xxxxxxxxx). 
+- Địa chỉ giao hàng (>=5 ký tự). 
+- Vị trí ghim bản đồ (**Bắt buộc** để kiểm tra bán kính 2km). 
 
 #### Bước 2: Hình thức thanh toán: 
-- Lựa chọn 1 - Tiền mặt (Cash): Gán trạng thái đơn: unverified_cash. 
-  - Hiển thị thông báo: "Nhân viên sẽ gọi điện xác nhận đơn hàng của bạn". 
-- Lựa chọn 2 - Chuyển khoản (Online Transfer): 
-  - Hiển thị mã VietQR động (Số tiền = Tổng giỏ hàng). 
-  - Nút "Tải lên biên lai": Khách chụp/chọn ảnh bill chuyển khoản. 
+- **🏦 Chuyển khoản (Online Transfer) - phương thức duy nhất**: 
+  - Ẩn/khóa toàn bộ khu vực VietQR và nút tải biên lai ở trạng thái ban đầu. 
+  - Chỉ mở khóa sau khi khách ghim vị trí thành công và hệ thống xác nhận khoảng cách <= 2km. 
+  - Nếu khoảng cách > 2km: hiển thị cảnh báo đỏ và **không cho thanh toán**. 
+  - Hiển thị mã **VietQR (Napas 24/7)** với số tiền tự động. 
+  - Nút "**Tải lên biên lai**": Khách tải ảnh bill (JPEG, PNG, WebP, max 5MB). 
   - Hiển thị ảnh Preview sau khi tải lên. 
+  - Gán trạng thái đơn `pending_transfer`. 
+- **Nút bổ sung**: Copy Mã đơn + Copy Số tiền (kèm Toast xác nhận). 
+- **Liên hệ**: Nút Chat ngay hoặc Gọi hotline nếu cần hỗ trợ. 
 
 #### Bước 3: Hoàn tất: 
-- Lưu đơn hàng vào hệ thống với trạng thái Pending (Chờ duyệt). 
+- Lưu đơn hàng vào Firestore với trạng thái tương ứng. 
+- Bắt buộc lưu thêm `distance` (km) và `coordinates` ({lat, lng}) cho mỗi đơn. 
+- Khách được hiển thị Mã đơn để theo dõi. 
 
 ### C. Theo dõi đơn hàng (Order Tracking) 
-- Hiển thị tiến trình đơn hàng theo thời gian thực (giả lập hoặc qua Firebase): 
-  - Chờ xác nhận -> Đang pha chế -> Hoàn thành/Đang giao. 
+- **Status Hero** với icon + label rõ ràng: 
+  - ⏳ Xác minh thanh toán (pending_transfer). 
+  - 🛵 Đang giao hàng (processing). 
+  - ✓ Hoàn thành (completed). 
+  - ✗ Thất bại / Huỷ (failed / canceled). 
+- **Thông tin chi tiết**: Mã đơn (copy được), phương thức thanh toán, tên/SĐT/Địa chỉ khách. 
+- **Danh sách sản phẩm** với hình ảnh thumbnail, tên, giá từng cái. 
+- **Tổng cộng** (VND). 
+- **Action buttons**: Gọi hotline hoặc Nhắn tin support 24/7. 
 
 ## 3. LUỒNG NGHIỆP VỤ QUẢN TRỊ (ADMIN FLOW) 
-### A. Dashboard Điều phối 
-- Nhận thông báo khi có đơn hàng mới (Âm thanh "Ting"). 
-- Phân loại đơn hàng: 
-  - Màu Cam: Đơn tiền mặt (Cần gọi điện xác nhận). 
-  - Màu Vàng: Đơn chuyển khoản (Cần kiểm tra ảnh Bill đối chiếu với tài khoản ngân hàng). 
-- Hành động: 
-  - Nút [Duyệt đơn]: Chuyển trạng thái đơn sang "Đang pha chế". 
-  - Nút [Hủy đơn]: Nhập lý do (Hết món/Spam). 
+### A. Dashboard Điều phối (6 Tabs)
 
-### B. Quản lý Menu (Back-office) 
-- Ẩn/Hiện món ăn theo tình trạng kho hàng thực tế. 
-- Cập nhật giá món nhanh chóng. 
+**1️⃣ Tab Đơn hàng (📋 Orders)**
+- Danh sách tất cả đơn hàng (sắp xếp ngược time). 
+- **Phân loại đơn hàng theo status & màu**: 
+  - 🟡 **Yellow** (pending_transfer): Chuyển khoản - Chờ xác minh biên lai. 
+  - 🔵 **Blue** (processing): Đang giao hàng. 
+  - 🟢 **Green** (completed): Hoàn thành. 
+  - 🔴 **Red** (failed): Thất bại (xác minh thất bại hoặc không liên hệ được). 
+  - ⚫ **Gray** (canceled): Đã hủy. 
+- **Badges**: "Đơn mới" (unviewed) khi có đơn vừa tạo. 
+- **Khoảng cách giao hàng**: hiển thị badge `📍 x.xx km` trên từng đơn để nhân viên nắm độ xa/gần. 
+- **Lọc & Tìm kiếm**: Filter theo ngày, status, phương thức; tìm mã đơn/tên/SĐT. 
+- **Hành động**: 
+  - Xem chi tiết (mở Modal: sản phẩm, khách, bill upload nếu CK). 
+  - Duyệt đơn: Chuyển `pending_transfer` → `processing`. 
+  - Hủy đơn: Nhập lý do (Hết hàng / Spam / Khác). 
+  - Thay đổi status thủ công (sau khi giao xong → completed). 
 
-## 4. CHIẾN LƯỢC CHỐNG SPAM & BẢO MẬT (ANTI-SPAM) 
-- Rate Limiting: Một thiết bị (IP/Cookie) không được đặt quá 2 đơn trong vòng 5 phút. 
-- Manual Verification: Nhân viên là chốt chặn cuối cùng. Chỉ khi nhân viên bấm "Duyệt", đơn hàng mới được tính là hợp lệ và bắt đầu sản xuất. 
-- Chatbot Support: Tích hợp nút Chat 1-1 để khách hàng có thể gửi ảnh bill bổ sung hoặc hỏi đáp trực tiếp nếu gặp sự cố thanh toán. 
+**2️⃣ Tab Chat (💬 Chat)** 
+- Danh sách khách hàng có tin nhắn (mới nhất trên cùng). 
+- Badges: "Chat mới" khi có tin nhắn chưa read. 
+- Giao diện: Khách + Admin reply, lưu vào `guestChats` Firestore. 
+- Thông báo: Telegram bot khi khách gửi tin mới. 
 
-## 5. KẾ HOẠCH PHÁT TRIỂN (ROADMAP) 
-- Phase 1 (UI/UX): Hoàn thiện giao diện Menu, Modal chi tiết, và Trang thanh toán mới. 
-- Phase 2 (Logic): Tách file JS, xử lý lưu trữ localStorage và luồng chuyển trang. 
-- Phase 3 (Backend): Kết nối Firebase Realtime Database để Admin và Khách nhận thông báo ngay lập tức. 
-- Phase 4 (Final Touch): Tối ưu tốc độ tải ảnh, bảo mật XSS và kiểm thử lỗi trên các thiết bị di động.
+**3️⃣ Tab Menu (🍽️ Menu)** - **Chỉ Full Admin** 
+- Quản lý danh mục (Kinu, Coffee, Dessert, v.v.). 
+- Quản lý sản phẩm: Thêm/Sửa/Xóa, upload ảnh (auto-compress). 
+- Ẩn/Hiện sản phẩm (theo tình trạng kho hàng). 
+- Cập nhật giá nhanh. 
 
-## 6. CẬP NHẬT THỰC THI (IMPLEMENTATION NOTES)
-- Payment:
+**4️⃣ Tab Báo cáo (📈 Report)** - **Chỉ Full Admin** 
+- Thống kê đơn hàng: Hôm nay / Tuần này / Tháng này. 
+- Tổng doanh số (VND), số lượng đơn, tỷ lệ hoàn thành. 
+- Export báo cáo ngày. 
+
+**5️⃣ Tab Cài đặt (⚙️ Settings)** - **Chỉ Full Admin** 
+- Tên quán, Hotline, Địa chỉ. 
+- **Cấu hình thanh toán**: 
+  - Thông tin VietQR (Bank account, holder name). 
+  - Telegram bot token (dùng gửi notification). 
+- Lưu xong có hiệu lực ngay. 
+
+**6️⃣ Tab Nhân viên (👥 Staff)** - **Chỉ Full Admin** 
+- Danh sách admin/staff hiện tại. 
+- Thêm nhân viên: Cấp role `staff` hoặc `admin`. 
+- Xóa nhân viên (trừ bootstrap admin). 
+- Hiển thị role badge: 👑 Admin / 👤 Staff. 
+
+### B. Thông báo & Âm thanh 
+- **Thông báo mới**: Âm thanh "Ting" + Badge "Đơn mới" khi có đơn hàng. 
+- **Telegram Bot**: Đơn mới gửi theo format: `Đơn hàng mới - [Số tiền] - Cách quán [số km] km`. 
+- **Nút Bật âm thanh**: Toàn cầu cho tất cả thông báo mới. 
+
+## 4. ROLE & QUYỀN HẠN (ROLE SYSTEM) 
+
+### A. Ba mức quyền: 
+- **👑 Admin** (`role: 'admin'`) - **Toàn quyền**: Quản lý menu, settings, staff, xem reports. 
+- **👑 Super Admin** (`role: 'super_admin'`) - **Toàn quyền** (dành cho bootstrap admin). 
+- **👤 Staff** (`role: 'staff'`) - **Quyền hạn chế**: 
+  - ✅ Xem đơn hàng và duyệt đơn. 
+  - ✅ Gửi/nhận tin chat với khách. 
+  - ❌ **KHÔNG** quản lý menu. 
+  - ❌ **KHÔNG** xem/thay đổi cài đặt. 
+  - ❌ **KHÔNG** quản lý nhân viên. 
+  - ❌ **KHÔNG** xem báo cáo. 
+
+### B. Bootstrap Admin (Admin gốc): 
+- Email cố định: `phongnhat43@gmail.com` 
+- Luôn có quyền `super_admin` bất kể Firestore trả về role gì (hard-coded). 
+- Tài khoản đặc biệt này không thể bị xóa hoặc giáng quyền. 
+
+### C. Firestore Security Rules: 
+- `orders/`: Staff + Admin có thể đọc/ghi. 
+- `menu/`: Chỉ Full Admin (+ Bootstrap) viết. 
+- `guestChats/`: Staff + Admin reply. 
+- `settings/`: Full Admin viết; `payment_config` public read. 
+- `admin_users/`: Full Admin quản lý (thêm/xóa). 
+
+## 5. CHIẾN LƯỢC CHỐNG SPAM & BẢO MẬT (ANTI-SPAM & SECURITY) 
+- **Rate Limiting**: Firebase Firestore built-in (free tier: 1 triệu reads/day). 
+- **Manual Verification**: Nhân viên là chốt chặn cuối cùng. Chỉ khi admin bấm "Duyệt", đơn hàng mới sang trạng thái `processing`. 
+- **Biên lai chuyển khoản**: Admin kiểm tra ảnh upload, đối chiếu với account ngân hàng trước khi duyệt. 
+- **Chat Support**: Tích hợp Chat 1-1 để khách có thể gửi ảnh thêm hoặc hỏi đáp nếu gặp sự cố. 
+- **UI Protection**: Staff bị ẩn menu/settings/report bằng CSS + JS guards. Admin KHÔNG thể xóa bootstrap admin.
+
+## 6. KẾ HOẠCH PHÁT TRIỂN (ROADMAP) 
+
+**✅ Phase 1 (Hoàn thiện)**: Giao diện Menu, Modal chi tiết, Trang thanh toán, UI role-based. 
+
+**✅ Phase 2 (Logic)**: sessionStorage bill, luồng chuyển trang, upload biên lai, Chat. 
+
+**✅ Phase 3 (Backend)**: Firestore Realtime, Telegram bot notification, Admin dashboard. 
+
+**✅ Phase 4 (Role & Security)**: 3-tier role system, Staff UI hiding, Settings/Menu access control. 
+
+**🔄 Phase 5 (Cải thiện)** (Ưu tiên): 
+- Rate limiting tùy chỉnh (per-device limit). 
+- Audit log (ai sửa menu, ai duyệt đơn). 
+- Multi-language support (EN/VI). 
+- Mobile app version. 
+
+**🔮 Phase 6 (Tương lai)** (Ưu tiên 3+): 
+- Loyalty program (điểm quà). 
+- AI chatbot tự động reply. 
+- POS integration (máy bán hàng để cạnh tranh).
+
+## 7. CHI TIẾT THỰC THI (IMPLEMENTATION DETAILS)
+
+### Payment Flow Implementation:
   - Thu thập Tên, SĐT (regex 0xxxxxxxxx/+84xxxxxxxxx), Địa chỉ (>=5 ký tự).
-  - Địa điểm tùy chọn (Tỉnh/Thành → Quận/Huyện → Phường/Xã) với dữ liệu mẫu cho Bắc Ninh (Từ Sơn, Tiên Du, Yên Phong) và Hà Nội (Đông Anh, Gia Lâm).
-  - Phương thức:
-    - Tiền mặt → status: `unverified_cash`.
-    - Chuyển khoản → hiển thị VietQR + bắt buộc upload ảnh biên lai → status: `pending_transfer`.
+  - Bắt buộc ghim vị trí để tính khoảng cách từ quán bằng công thức Haversine.
+  - Chỉ chấp nhận chuyển khoản:
+    - Nếu `distance > 2`: khóa thanh toán và hiển thị cảnh báo đỏ.
+    - Nếu `distance <= 2`: mở khóa VietQR + upload biên lai → status: `pending_transfer`.
   - “Nhắn tin ngay” mở chat ngay trên trang thanh toán (không rời trang).
   - Copy Mã đơn/Số tiền có toast xác nhận.
+  - Khi lưu Firestore: thêm `distance` và `coordinates`.
 - Tracking:
   - Hiển thị badge phương thức (Tiền mặt/Chuyển khoản), thông tin khách (Tên · SĐT · Địa chỉ · Địa điểm nếu có).
   - Danh sách món có ảnh thumbnail; tổng tiền.
@@ -78,32 +179,32 @@
 - Ngôn ngữ giao diện:
   - Tuân thủ .system/rules/DEVELOPMENT_RULE.md: không dùng tiếng Anh cho text UI (ví dụ “Theo dõi”, “Tải ảnh”).
 
-## 7. TRẠNG THÁI & CHUYỂN TRẠNG (STATE MACHINE)
-Trạng thái: `unverified_cash` | `pending_transfer` | `processing` | `completed` | `canceled` | `failed`
+## 8. TRẠNG THÁI & CHUYỂN TRẠNG (STATE MACHINE)
+Trạng thái: `pending_transfer` | `processing` | `completed` | `canceled` | `failed`
 
-- Tạo đơn (Cash):
-  - → `unverified_cash` → (Admin xác nhận) → `processing` → `completed`
-  - Có thể `canceled` nếu khách hủy/không liên hệ được.
 - Tạo đơn (Transfer):
-  - Yêu cầu ảnh biên lai → `pending_transfer` → (Admin đối chiếu) → `processing` → `completed`
-  - Có thể `failed` (xác minh thất bại) hoặc `canceled` (không hợp lệ).
+  - Điều kiện bắt buộc: Ghim vị trí + `distance <= 2km` + upload biên lai.
+  - Luồng chính: `pending_transfer` → (Admin đối chiếu) → `processing` → `completed`.
+  - Luồng lỗi: `pending_transfer` → `failed` (biên lai không hợp lệ) hoặc `canceled` (khách hủy/không hợp lệ).
 
-## 8. DỮ LIỆU ĐƠN HÀNG (CLIENT-SIDE DEMO)
+## 9. CẤU TRÚC DỮ LIỆU ĐƠN HÀNG (FIRESTORE COLLECTIONS)
 ```json
 {
-  "id": "BILL123456",
-  "items": [{ "id":"coffee-black", "name":"Black Coffee", "img":"...", "priceK":29, "qty":1 }],
-  "totalK": 29,
-  "totalVND": 29000,
-  "method": "cash|transfer",
-  "status": "unverified_cash|pending_transfer|processing|completed|canceled|failed",
+  "billCode": "BILL231009001",
+  "method": "transfer",
+  "status": "pending_transfer",
+  "distance": 1.24,
+  "coordinates": {
+    "lat": 21.12012,
+    "lng": 105.97123
+  },
   "customer": {
-    "name": "Nguyễn Văn A",
+    "name": "Nguyen Van A",
     "phone": "0987654321",
-    "address": "Số 1, Đường A",
-    "city": "Bắc Ninh",
-    "district": "Từ Sơn",
-    "ward": "Phường Đông Ngàn"
-  }
+    "address": "So 1, Duong A"
+  },
+  "billUrl": "https://...",
+  "totalVND": 58000,
+  "createdAt": "serverTimestamp"
 }
 ```

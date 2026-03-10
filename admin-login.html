@@ -80,6 +80,7 @@
             // Auto-bootstrap: tạo document admin đầu tiên nếu chưa có
             return db.collection('admin_users').doc(user.email).set({
               email: user.email,
+              role: 'super_admin',  // 👑 Admin gốc - toàn quyền
               addedAt: firebase.firestore.FieldValue.serverTimestamp(),
               addedBy: 'bootstrap'
             }).then(function() {

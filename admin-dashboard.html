@@ -87,6 +87,23 @@
       75%     { transform: rotate(5deg); }
     }
     .bell-shake { animation: bell-shake 0.6s ease; }
+    
+    /* 👑 Role-based UI Control */
+    /* Ẩn các phần tử cho staff */
+    [data-role="staff"] [data-staff-hidden],
+    [data-role="staff"] .staff-hidden {
+      display: none !important;
+    }
+    [data-role="staff"] .btn-delete,
+    [data-role="staff"] .btn-edit,
+    [data-role="staff"] .btn-add {
+      display: none !important;
+    }
+    /* Ẩn tab Cài đặt cho staff */
+    [data-role="staff"] [data-tab="settings"],
+    [data-role="staff"] #tab-settings {
+      display: none !important;
+    }
   </style>
 </head>
 <body class="min-h-full bg-darkbg text-gray-100 font-sans">
@@ -273,8 +290,8 @@
         <div class="flex items-center justify-between mb-3">
           <div class="font-semibold">Quản lý Menu</div>
           <div class="flex items-center gap-2">
-            <button id="add-cat" class="px-3 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600">+ Danh mục</button>
-            <button id="add-item" class="px-3 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600">+ Món</button>
+            <button id="add-cat" class="btn-add px-3 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600">+ Danh mục</button>
+            <button id="add-item" class="btn-add px-3 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600">+ Món</button>
           </div>
         </div>
         <div class="text-xs text-gray-400 mb-3">Hỗ trợ size động: thêm/xóa size tùy ý (vd: 350ml, Chai 1L, Ly lớn) trong modal Thêm/Sửa món.</div>
@@ -365,9 +382,23 @@
         </div>
 
         <!-- Add new email -->
-        <div class="flex gap-2 mb-5">
-          <input id="staff-email-input" type="email" placeholder="Nhập email Google cần cấp quyền..." class="flex-1 rounded-lg border border-white/20 bg-gray-700 text-gray-200 px-3 py-2 text-sm placeholder-gray-500 outline-none focus:ring-2 focus:ring-accent" />
-          <button id="staff-add-btn" class="px-4 py-2 rounded-lg bg-accent hover:bg-accent/80 text-white text-sm font-medium shrink-0 transition">+ Thêm quyền</button>
+        <div class="space-y-3 mb-5">
+          <div class="flex gap-2">
+            <input id="staff-email-input" type="email" placeholder="Nhập email Google cần cấp quyền..." class="flex-1 rounded-lg border border-white/20 bg-gray-700 text-gray-200 px-3 py-2 text-sm placeholder-gray-500 outline-none focus:ring-2 focus:ring-accent" />
+            <button id="staff-add-btn" class="px-4 py-2 rounded-lg bg-accent hover:bg-accent/80 text-white text-sm font-medium shrink-0 transition">+ Thêm quyền</button>
+          </div>
+          <!-- Role selection -->
+          <div class="flex gap-4 items-center px-2 py-2 rounded-lg bg-gray-700/40 border border-white/10">
+            <label class="text-xs text-gray-300 font-medium whitespace-nowrap">Chọn vai trò:</label>
+            <label class="flex items-center gap-2 cursor-pointer flex-1">
+              <input type="radio" name="staff-role" value="staff" checked class="cursor-pointer">
+              <span class="text-xs text-gray-200">👤 Nhân viên (Chỉ duyệt đơn)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer flex-1">
+              <input type="radio" name="staff-role" value="admin" class="cursor-pointer">
+              <span class="text-xs text-gray-200">👑 Quản trị viên (Toàn quyền)</span>
+            </label>
+          </div>
         </div>
         <div id="staff-add-error" class="hidden mb-3 px-3 py-2 rounded-lg bg-red-500/20 text-red-300 text-xs"></div>
 
@@ -421,7 +452,7 @@
           <div class="rounded-xl bg-gray-900/50 border border-white/10 p-5">
             <div class="text-xs text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-2">
               <span>📍</span>
-              <span>Địa chỉ giao hàng</span>
+              <span>Vị trí</span>
             </div>
             <div id="modal-detail-address" class="text-sm text-gray-300 leading-relaxed"></div>
           </div>
@@ -460,7 +491,7 @@
 
         <!-- Actions -->
         <div class="sticky bottom-0 bg-gray-800/95 backdrop-blur border-t border-white/10 px-6 py-5 flex items-center justify-end gap-3">
-          <button id="modal-btn-delete" class="px-4 py-2.5 rounded-lg bg-red-950/80 hover:bg-red-950 text-red-200 border border-red-800/70 text-sm font-medium transition shadow-lg">Xóa đơn</button>
+          <button id="modal-btn-delete" class="btn-delete px-4 py-2.5 rounded-lg bg-red-950/80 hover:bg-red-950 text-red-200 border border-red-800/70 text-sm font-medium transition shadow-lg">Xóa đơn</button>
           <button id="modal-btn-fail" class="px-4 py-2.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-white text-sm font-medium transition shadow-lg">Thất bại</button>
           <button id="modal-btn-cancel" class="px-4 py-2.5 rounded-lg bg-red-800/80 hover:bg-red-800 text-white text-sm font-medium transition shadow-lg">Hủy</button>
           <button id="modal-btn-approve" class="px-5 py-2.5 rounded-lg bg-yellowx hover:bg-yellowx/90 text-gray-900 font-semibold text-sm transition shadow-lg">Duyệt đơn</button>
@@ -513,6 +544,11 @@
                 location.replace('admin-login.html');
                 return;
               }
+              // 👑 Lấy role của user hiện tại
+              var userData = doc.data();
+              var userRole = userData.role || 'admin'; // fallback for old records
+              window.currentUserRole = userRole;
+              
               // Show user info in header
               var info = document.getElementById('admin-user-info');
               var avatarEl = document.getElementById('admin-avatar');
@@ -523,12 +559,40 @@
                 info.classList.remove('hidden');
                 info.classList.add('flex');
               }
+              
+              // 👑 Kiểm soát UI dựa vào role
+              controlUIByRole(userRole);
             })
             .catch(function() { location.replace('admin-login.html'); });
         });
       }
       waitForAuth();
     })();
+    
+    // 👑 Hàm kiểm soát hiển thị UI dựa vào role
+    function controlUIByRole(role) {
+      // Nếu là staff: ẩn các tính năng giới hạn
+      if (role === 'staff') {
+        // ẩn tab Nhân viên
+        var staffTab = document.querySelector('[data-tab="staff"]');
+        if (staffTab) staffTab.style.display = 'none';
+
+        // ẩn tab Cài đặt
+        var settingsTab = document.querySelector('[data-tab="settings"]');
+        if (settingsTab) settingsTab.style.display = 'none';
+
+        // ẩn các action add/edit/delete theo yêu cầu
+        document.querySelectorAll('.btn-delete, .btn-edit, .btn-add').forEach(function(el) {
+          el.style.display = 'none';
+        });
+        
+        // Mark UI elements để ẩn/kiểm soát bằng CSS hoặc JS
+        document.documentElement.setAttribute('data-role', 'staff');
+      } else {
+        // admin hoặc super_admin: hiển thị đầy đủ
+        document.documentElement.setAttribute('data-role', role === 'super_admin' ? 'super_admin' : 'admin');
+      }
+    }
   </script>
   <script defer>
     // Logout
@@ -564,15 +628,40 @@
         }
         if (empty) empty.classList.add('hidden');
         if (!list) return;
+        
+        // � Admin gốc - bảo vệ
+        var BOOTSTRAP_ADMIN = 'phongnhat43@gmail.com';
+        var currentUser = firebase.auth().currentUser;
+        var currentUserEmail = currentUser ? currentUser.email : '';
+        
         list.innerHTML = docs.map(function(d) {
           var data = d.data();
+          var isBootstrapAdmin = (d.id === BOOTSTRAP_ADMIN);
+          var isCurrentUser = (d.id === currentUserEmail);
+          var hideDelete = isBootstrapAdmin || isCurrentUser;
+          var role = isBootstrapAdmin ? 'super_admin' : (data.role === 'staff' ? 'staff' : 'admin');
+          
+          // 👑 Role badges
+          var roleBadge = '';
+          if (role === 'super_admin') {
+            roleBadge = '<span class="text-[10px] font-bold bg-purple-500/30 text-purple-300 px-2 py-0.5 rounded-full">👑 Super Admin</span>';
+          } else {
+            roleBadge = '<span class="text-[10px] font-bold bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full">' + (role === 'admin' ? '👑 Admin' : '👤 Staff') + '</span>';
+          }
+          
           return '<div class="grid grid-cols-12 items-center px-4 py-3 hover:bg-white/5 transition text-sm">'
-            + '<div class="col-span-7 text-gray-200 font-mono text-xs truncate" title="' + d.id + '">' + d.id + '</div>'
+            + '<div class="col-span-5">'
+            + '<div class="text-gray-200 font-mono text-xs truncate" title="' + d.id + '">' + d.id + '</div>'
+            + '<div class="mt-1">' + roleBadge + '</div>'
+            + '</div>'
             + '<div class="col-span-4 text-gray-500 text-xs">' + formatDate(data.addedAt) + '</div>'
-            + '<div class="col-span-1 flex justify-end">'
-            + '<button class="staff-del p-1.5 rounded-lg hover:bg-red-500/20 text-red-400 hover:text-red-300 transition" data-email="' + d.id + '" title="Thu hồi quyền">'
-            + '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>'
-            + '</button></div></div>';
+            + '<div class="col-span-3 flex justify-end">'
+            + (hideDelete
+              ? '<div class="px-2 py-1 rounded-lg bg-orange-500/20 text-orange-300 text-[10px] font-semibold">🔒 Bảo vệ</div>'
+              : '<button class="staff-del p-1.5 rounded-lg hover:bg-red-500/20 text-red-400 hover:text-red-300 transition" data-email="' + d.id + '" title="Thu hồi quyền">'
+              + '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>'
+              + '</button>')
+            + '</div></div>';
         }).join('');
         // Bind delete buttons
         list.querySelectorAll('.staff-del').forEach(function(btn) {
@@ -621,9 +710,14 @@
             if (addError) { addError.textContent = 'Email không hợp lệ.'; addError.classList.remove('hidden'); }
             return;
           }
+          // 👑 Lấy role từ radio button
+          var selectedRole = document.querySelector('input[name="staff-role"]:checked');
+          var role = selectedRole ? selectedRole.value : 'staff';
+          
           var currentUser = firebase.auth().currentUser;
           getDb().collection('admin_users').doc(email).set({
             email: email,
+            role: role,  // Lưu role theo yêu cầu: staff hoặc admin
             addedAt: firebase.firestore.FieldValue.serverTimestamp(),
             addedBy: currentUser ? currentUser.email : 'unknown'
           }).then(function() {

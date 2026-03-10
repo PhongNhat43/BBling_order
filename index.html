@@ -95,6 +95,74 @@
         transform: translateX(-50%) translateY(-110%) !important;
       }
     }
+
+    @media (max-width: 767.98px) {
+      :root {
+        --bb-mobile-header-h: 96px;
+      }
+
+      #mobile-category-sticky {
+        position: sticky;
+        top: var(--bb-mobile-header-h);
+        z-index: 25;
+      }
+
+      #mobile-category-tabs {
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+
+      #mobile-category-tabs::-webkit-scrollbar {
+        display: none;
+      }
+
+      #cart-bar {
+        bottom: 0;
+        inset-inline: 0;
+        padding: 0.5rem 0.75rem calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+        background: linear-gradient(to top, rgba(242, 232, 223, 0.98), rgba(242, 232, 223, 0.7));
+      }
+
+      #cart-bar .mx-auto {
+        max-width: 100%;
+      }
+
+      #order-now {
+        min-height: 48px;
+        width: 90vw;
+        max-width: 360px;
+      }
+
+      button,
+      .opt,
+      .add {
+        min-height: 48px;
+      }
+    }
+
+    .bb-toast {
+      transform: translateY(12px);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 180ms ease, opacity 180ms ease;
+    }
+
+    .bb-toast.bb-toast-show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    @keyframes bb-shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      50% { transform: translateX(2px); }
+      75% { transform: translateX(-1px); }
+      100% { transform: translateX(0); }
+    }
+
+    .bb-shake {
+      animation: bb-shake 180ms ease;
+    }
   </style>
 </head>
 
@@ -107,12 +175,26 @@
           <a href="index.html" class="text-2xl md:text-3xl font-bold font-serif italic tracking-wide">B.BLING</a>
           <span class="text-xs uppercase tracking-[0.18em] text-primary/70">Coffee &amp; Eatery</span>
           <span class="text-xs px-3 py-1 rounded-full bg-accent text-white">0985.679.565</span>
+          <button id="chat-toggle-mobile" type="button" aria-label="Mở chat hỗ trợ"
+            class="md:hidden w-10 h-10 rounded-full bg-primary text-cream inline-flex items-center justify-center hover:shadow-lg active:scale-95 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M8 10h8M8 14h5m-1 6l3-3h3a4 4 0 004-4V7a4 4 0 00-4-4H7a4 4 0 00-4 4v6a4 4 0 004 4h4z" />
+            </svg>
+          </button>
           <a href="tracking.html?mode=search"
             class="text-xs px-3 py-1 rounded-full bg-white text-primary border border-primary/20 shadow-soft hover:shadow-lg active:scale-95 transition">Tra
             cứu đơn</a>
         </div>
       </div>
     </header>
+
+    <div id="mobile-category-sticky" class="md:hidden px-3 pb-2">
+      <div class="mx-auto max-w-4xl rounded-xl bg-white/80 backdrop-blur shadow-soft border border-primary/10 px-2 py-2">
+        <div id="mobile-category-tabs" class="flex items-center gap-2 overflow-x-auto whitespace-nowrap"></div>
+      </div>
+    </div>
 
     <main class="px-3 pb-28 md:px-6">
       <section class="mx-auto max-w-4xl">
@@ -128,14 +210,14 @@
     <div id="cart-bar" class="fixed bottom-3 inset-x-3 hidden">
       <div class="mx-auto max-w-4xl">
         <div
-          class="flex items-center justify-between rounded-xl bg-primary/90 backdrop-blur text-cream px-4 py-3 shadow-soft transition-opacity duration-300">
-          <div class="text-sm flex items-center gap-2">
+          class="flex flex-col md:flex-row items-center justify-between gap-3 rounded-xl bg-primary/90 backdrop-blur text-cream px-4 py-3 shadow-soft transition-opacity duration-300">
+          <div class="text-sm flex items-center gap-2 md:self-auto self-start">
             <span id="cart-count"
               class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-accent/80 text-white text-xs font-bold">0</span>
             <span class="opacity-90">Tổng:</span> <span id="cart-total" class="font-semibold"></span>
           </div>
           <button id="order-now"
-            class="px-4 py-2 rounded-lg bg-accent text-white font-semibold hover:shadow-lg active:scale-95 transition">Đặt
+            class="px-4 py-2 rounded-lg bg-accent text-white font-semibold hover:shadow-lg active:scale-95 transition min-h-[48px]">Đặt
             món ngay</button>
         </div>
       </div>
@@ -164,7 +246,7 @@
     </div>
 
     <button id="chat-toggle"
-      class="fixed z-50 w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-soft transition-shadow relative"
+      class="hidden md:flex fixed z-50 w-12 h-12 rounded-full bg-accent text-white items-center justify-center shadow-soft transition-shadow relative"
       style="right:16px;bottom:24px;position:fixed">
       <span class="absolute inset-0 rounded-full">
         <span class="animate-ping absolute inset-0 rounded-full bg-accent opacity-30"></span>
@@ -210,6 +292,11 @@
         <button id="chat-send"
           class="px-3 py-2 rounded-lg bg-accent text-white text-sm hover:shadow-lg transition">Gửi</button>
       </div>
+    </div>
+
+    <div id="add-toast"
+      class="bb-toast fixed left-1/2 -translate-x-1/2 bottom-24 z-[70] rounded-full bg-primary text-cream px-4 py-2 text-xs shadow-soft">
+      Đã thêm món vào giỏ
     </div>
   </div>
   <!-- Product Detail Modal -->

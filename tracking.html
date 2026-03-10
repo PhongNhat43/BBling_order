@@ -310,9 +310,19 @@
       // Customer Info
       document.getElementById('cust-name').textContent = customer.name || 'Chưa có thông tin'
       document.getElementById('cust-phone').textContent = customer.phone ? '📞 ' + customer.phone : ''
-      document.getElementById('cust-address').textContent = customer.address ? '📍 ' + customer.address : ''
-      const loc = [customer.city, customer.district, customer.ward].filter(Boolean).join(' · ')
-      document.getElementById('cust-location').textContent = loc || ''
+      const pinnedAddr = String(customer.pinnedAddress || '').trim()
+      const addressText = String(customer.address || '').trim()
+      const areaText = [customer.city, customer.district, customer.ward].filter(Boolean).join(' · ')
+      const receiveText = addressText || 'Chưa có địa chỉ nhận hàng'
+      document.getElementById('cust-address').textContent = '🏠 Địa chỉ nhận hàng: ' + receiveText
+
+      const distNum = Number(data?.distance)
+      const hasDist = Number.isFinite(distNum)
+      const locParts = []
+      const locationText = pinnedAddr || areaText || 'Chưa có vị trí ghim'
+      locParts.push('📌 Vị trí: ' + locationText)
+      if (hasDist) locParts.push('Cách quán: ' + distNum.toFixed(2) + ' km')
+      document.getElementById('cust-location').textContent = locParts.join(' · ') || ''
 
       // Items List — compact style
       const list = document.getElementById('order-list')

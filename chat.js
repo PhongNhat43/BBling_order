@@ -5,6 +5,7 @@
   const VERSION = '2026.03.01-1';
   const SELECTORS = {
     toggle: 'chat-toggle',
+    mobileToggle: 'chat-toggle-mobile',
     panel: 'chat-panel',
     close: 'chat-close',
     log: 'chat-log',
@@ -86,6 +87,7 @@
     constructor(root) {
       rebuildUI();
       this.toggle = document.getElementById(SELECTORS.toggle);
+      this.mobileToggle = document.getElementById(SELECTORS.mobileToggle);
       this.panel = document.getElementById(SELECTORS.panel);
       this.closeBtn = document.getElementById(SELECTORS.close);
       this.log = document.getElementById(SELECTORS.log);
@@ -124,6 +126,7 @@
 
     bindEvents() {
       this.toggle.addEventListener('click', () => this.openOrToggle());
+      if (this.mobileToggle) this.mobileToggle.addEventListener('click', () => this.openOrToggle());
       this.closeBtn.addEventListener('click', () => this.hide());
       this.sendBtn.addEventListener('click', () => this.sendText());
       // IME FIX (definitive): same macOS issue — 2nd keydown(Enter) auto-fired by IME after commit.

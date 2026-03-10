@@ -26,9 +26,18 @@ const AdminState = (() => {
   let currentPage = 1;
   const db = typeof window !== 'undefined' ? (window.bbDb || null) : null;
   const useFirebase = !!db;
+  function currentRole(){
+    return (typeof window !== 'undefined' && window.currentUserRole) ? window.currentUserRole : 'admin';
+  }
+  function isStaffRole(){ return currentRole() === 'staff'; }
+  function canManageMenu(){ return !isStaffRole(); }
   function persistMenu(){ saveMenu(categories, items); if(useFirebase) persistMenuToFirebase(); }
   function vndK(k){ return (k*1000).toLocaleString('vi-VN')+' đ'; }
   function totalK(order){ return order.items.reduce((s,i)=>s+i.qty*(i.unitPriceK||i.priceK||0),0); }
+  function distanceLabel(order){
+    const d = Number(order && order.distance);
+    return Number.isFinite(d) ? ('📍 ' + d.toFixed(2) + ' km') : '📍 --';
+  }
   // Orders: NEW means not viewed by admin yet (not time-based)
   // Guest chats: keep legacy time-based behavior by passing timestamp number.
   function isNewOrder(orderOrTs){
@@ -222,17 +231,18 @@ const AdminState = (() => {
         newDocs.forEach(function (o) {
           const custName = (o.customer && o.customer.name) ? o.customer.name : 'Khách';
           const method = o.method === 'cash' ? '💵 Tiền mặt' : '🏦 Chuyển khoản';
+          const dist = distanceLabel(o);
           NotifMgr.push(
             'order',
             '🛍️ Đơn hàng mới #' + o.id,
-            custName + ' · ' + vndK(totalK(o)) + ' · ' + method,
+            custName + ' · ' + vndK(totalK(o)) + ' · ' + method + ' · ' + dist,
             o.id
           );
           TelegramNotif.send(
-            '🛍️ <b>Đơn hàng mới #' + o.id + '</b>\n'
-            + '👤 ' + custName + '\n'
-            + '💰 ' + vndK(totalK(o)) + ' · ' + method + '\n'
-            + '📍 ' + ((o.customer && o.customer.address) ? o.customer.address : 'Chưa có địa chỉ')
+            '🛍️ Đơn hàng mới - ' + vndK(totalK(o)) + ' - Cách quán ' + (Number.isFinite(Number(o.distance)) ? Number(o.distance).toFixed(2) : '--') + ' km\n'
+            + 'Mã đơn: #' + o.id + '\n'
+            + 'Khách: ' + custName + '\n'
+            + 'PTTT: ' + method
           );
         });
       }
@@ -451,6 +461,10 @@ const AdminState = (() => {
         phoneDiv.appendChild(el('span','text-xs text-gray-400 font-mono', custPhone));
         customerInfo.appendChild(phoneDiv);
       }
+      const distanceDiv = el('div','flex items-center gap-2 mt-1');
+      distanceDiv.appendChild(el('span','text-xs text-gray-500','🧭'));
+      distanceDiv.appendChild(el('span','text-xs text-cyan-300 font-medium', distanceLabel(o)));
+      customerInfo.appendChild(distanceDiv);
       
       // Right: Amount + Status
       const amountStatus = el('div','flex flex-col items-end gap-2');
@@ -529,8 +543,13 @@ const AdminState = (() => {
     const addrEl = qs('#modal-detail-address');
     if(addrEl){
       const c = o.customer || {};
-      const parts = [c.address || '', [c.city, c.district, c.ward].filter(Boolean).join(', ')].filter(Boolean);
-      addrEl.textContent = parts.join(' | ') || 'Chưa có địa chỉ';
+      const pinnedText = String(c.pinnedAddress || '').trim();
+      const areaText = [c.city, c.district, c.ward].filter(Boolean).join(', ');
+      const addressText = String(c.address || '').trim();
+      const receiveText = addressText || 'Chưa có địa chỉ nhận hàng';
+      const locationText = pinnedText || areaText || 'Chưa có vị trí ghim';
+      addrEl.innerHTML = '🏠 Địa chỉ nhận hàng: ' + receiveText
+        + '<br>📌 Vị trí: ' + locationText + ' · ' + distanceLabel(o);
     }
 
     // Items — dùng DOM thay vì innerHTML để tránh lỗi ký tự đặc biệt và ảnh base64
@@ -971,6 +990,8 @@ const AdminState = (() => {
     
     // Modal buttons
     const ap=qs('#modal-btn-approve'), dn=qs('#modal-btn-done'), cc=qs('#modal-btn-cancel'), ff=qs('#modal-btn-fail'), del=qs('#modal-btn-delete');
+    if (del) del.classList.add('btn-delete');
+    if (del && isStaffRole()) del.style.display = 'none';
     const doneClose = qs('#modal-detail-close'), modal = qs('#order-detail-modal');
     ap&&ap.addEventListener('click', ()=>{ if(selectedId){ updateStatus(selectedId,'processing'); }});
     dn&&dn.addEventListener('click', ()=>{ if(selectedId){ updateStatus(selectedId,'completed'); }});
@@ -1101,11 +1122,19 @@ const AdminState = (() => {
       const r=el('div','flex items-center gap-1');
       const ed=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs','Sửa');
       const del=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs','Xóa');
+      ed.classList.add('btn-edit');
+      del.classList.add('btn-delete');
       ed.addEventListener('click', ()=>openModal('Sửa danh mục',[
         {type:'input',id:'cat-name',value:c.name,placeholder:'Tên danh mục'}
-      ], ()=>{ c.name=qs('#cat-name').value.trim()||c.name; persistMenu(); renderCategories(); renderItems(); }));
+      ], ()=>{
+        if (!canManageMenu()) { Toast.error('Bạn không có quyền sửa menu'); return; }
+        c.name=qs('#cat-name').value.trim()||c.name; persistMenu(); renderCategories(); renderItems();
+      }));
       del.addEventListener('click', ()=>{
-        openModal('Xóa danh mục',[{type:'text',id:'t',value:'Xác nhận xóa?'}], ()=>{ categories=categories.filter(x=>x.id!==c.id); items=items.map(it=>it.cat===c.id?({...it,cat:''}):it); persistMenu(); renderCategories(); renderItems(); });
+        openModal('Xóa danh mục',[{type:'text',id:'t',value:'Xác nhận xóa?'}], ()=>{
+          if (!canManageMenu()) { Toast.error('Bạn không có quyền xóa danh mục'); return; }
+          categories=categories.filter(x=>x.id!==c.id); items=items.map(it=>it.cat===c.id?({...it,cat:''}):it); persistMenu(); renderCategories(); renderItems();
+        });
       });
       r.appendChild(ed); r.appendChild(del); row.appendChild(r); root.appendChild(row);
     });
@@ -1125,8 +1154,14 @@ const AdminState = (() => {
       const hide=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs', it.visible!==false?'Ẩn':'Hiện');
       const ed=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs','Sửa');
       const del=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs','Xóa');
-      hide.addEventListener('click', ()=>{ it.visible=!it.visible; persistMenu(); renderItems(); });
-      ed.addEventListener('click', ()=>{
+      hide.classList.add('btn-edit');
+      ed.classList.add('btn-edit');
+      del.classList.add('btn-delete');
+      hide.addEventListener('click', ()=>{
+        if (!canManageMenu()) { Toast.error('Bạn không có quyền chỉnh sửa menu'); return; }
+        it.visible=!it.visible; persistMenu(); renderItems();
+      });
+      ed.addEventListener('click', ()=>editProduct(function(){
         const existingSizes = getItemAvailableSizes(it);
         openModal('Sửa món',[
           {type:'input',id:'it-name',value:it.name,placeholder:'Tên món'},
@@ -1136,7 +1171,7 @@ const AdminState = (() => {
           {type:'input',id:'it-desc',value:it.desc||'',placeholder:'Mô tả'},
           {type:'file',id:'it-img',value:it.img||'',placeholder:'Chọn ảnh mới (để trống giữ nguyên)', accept:'image/*'},
           {type:'select',id:'it-cat',value:it.cat,options:categories.map(c=>({value:c.id,label:c.name}))}
-        ], async()=>{
+        ], async()=>saveProduct(async function(){
           it.name=qs('#it-name').value.trim()||it.name;
           const hasSizes=qs('#it-has-sizes').checked;
           const priceBase=Number(qs('#it-price').value); 
@@ -1169,14 +1204,33 @@ const AdminState = (() => {
             it.img=compressed;
           }
           persistMenu(); renderItems(); Toast.success('✓ Cập nhật món thành công');
-        });
-      });
+        }));
+      }));
       del.addEventListener('click', ()=>{
-        openModal('Xóa món',[{type:'text',id:'t',value:'Xác nhận xóa?'}], ()=>{ items=items.filter(x=>x.id!==it.id); persistMenu(); renderItems(); });
+        openModal('Xóa món',[{type:'text',id:'t',value:'Xác nhận xóa?'}], ()=>{
+          if (!canManageMenu()) { Toast.error('Bạn không có quyền xóa món'); return; }
+          items=items.filter(x=>x.id!==it.id); persistMenu(); renderItems();
+        });
       });
       r.appendChild(hide); r.appendChild(ed); r.appendChild(del);
       row.appendChild(left); row.appendChild(r); root.appendChild(row);
     });
+  }
+
+  function editProduct(action){
+    if (!canManageMenu()) {
+      Toast.error('Bạn không có quyền sửa món');
+      return;
+    }
+    if (typeof action === 'function') action();
+  }
+
+  async function saveProduct(action){
+    if (!canManageMenu()) {
+      Toast.error('Bạn không có quyền lưu món');
+      return;
+    }
+    if (typeof action === 'function') return action();
   }
 
   function readDynamicSizesFromEditor(editorId) {
@@ -1347,9 +1401,14 @@ const AdminState = (() => {
   }
   function bindMenu(){
     const addCat=qs('#add-cat'), addItem=qs('#add-item');
+    if (addCat) addCat.classList.add('btn-add');
+    if (addItem) addItem.classList.add('btn-add');
     addCat&&addCat.addEventListener('click', ()=>openModal('Thêm danh mục',[
       {type:'input',id:'cat-name',placeholder:'Tên danh mục'}
-    ], ()=>{ const n=qs('#cat-name').value.trim(); if(!n) return; categories.push({id:'cat-'+Date.now(),name:n}); persistMenu(); renderCategories(); }));
+    ], ()=>{
+      if (!canManageMenu()) { Toast.error('Bạn không có quyền thêm danh mục'); return; }
+      const n=qs('#cat-name').value.trim(); if(!n) return; categories.push({id:'cat-'+Date.now(),name:n}); persistMenu(); renderCategories();
+    }));
     addItem&&addItem.addEventListener('click', ()=>openModal('Thêm món',[
       {type:'input',id:'it-name',placeholder:'Tên món'},
       {type:'checkbox',id:'it-has-sizes',value:false,label:'Sản phẩm có size?'},
@@ -1359,6 +1418,7 @@ const AdminState = (() => {
       {type:'file',id:'it-img',placeholder:'Chọn ảnh', accept:'image/*'},
       {type:'select',id:'it-cat',placeholder:'Chọn danh mục cho món cần thêm',options:categories.map(c=>({value:c.id,label:c.name}))}
     ], async()=>{
+      if (!canManageMenu()) { Toast.error('Bạn không có quyền thêm món'); return; }
       const name=qs('#it-name').value.trim(); const p=Number(qs('#it-price').value||'0'); const desc=qs('#it-desc').value.trim(); const cat=qs('#it-cat').value;
       const hasSizes=qs('#it-has-sizes').checked;
       if(!name) { Toast.error('❌ Tên món không hợp lệ'); return; }
@@ -2149,6 +2209,22 @@ const AdminState = (() => {
   })();
 
   document.addEventListener('DOMContentLoaded', ()=>{
+    // 👑 Kiểm soát UI dựa vào role
+    var currentRole = window.currentUserRole || 'admin';
+    if (currentRole === 'staff') {
+      // Ẩn tất cả các nút Thêm/Sửa/Xóa trong phần Menu
+      // Sẽ kiểm soát trong hàm renderItems() khi render từng item
+      // Ẩn menu action buttons sẽ được xử lý thông qua class hoặc kiểm tra role
+      
+      // Kiểm soát trong renderOrders: ẩn nút delete order
+      // (sẽ được kiểm tra trong hàm render)
+      
+      // Set flag để kiểm soát trong các hàm render
+      window.isStaffUser = true;
+    } else {
+      window.isStaffUser = false;
+    }
+    
     NotifMgr.init();
     bindTabs(); bindOrders(); bindMenu(); bindSettings(); bindQuickReplies();
     if (useFirebase) {
