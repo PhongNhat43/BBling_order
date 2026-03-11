@@ -153,14 +153,14 @@
     }
 
     .bb-toast {
-      transform: translateY(12px);
+      transform: translateX(-50%) translateY(12px);
       opacity: 0;
       pointer-events: none;
       transition: transform 180ms ease, opacity 180ms ease;
     }
 
     .bb-toast.bb-toast-show {
-      transform: translateY(0);
+      transform: translateX(-50%) translateY(0);
       opacity: 1;
     }
 
@@ -323,10 +323,10 @@
     class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300 modal-animated flex items-end justify-center z-[100]">
     <div
       class="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-full transition-transform duration-300 w-full max-w-2xl modal-animated">
-      <div class="mx-3 mb-3 rounded-t-3xl md:rounded-2xl bg-white shadow-soft flex flex-col max-h-[88vh] md:max-h-[85vh]">
+      <div class="mx-3 mb-3 rounded-t-3xl md:rounded-2xl bg-white shadow-soft flex flex-col max-h-[72vh] md:max-h-[85vh]">
 
         <!-- Fixed image + close overlay -->
-        <div class="h-[190px] md:h-56 bg-gray-100 flex-shrink-0 relative rounded-t-3xl md:rounded-t-2xl overflow-hidden">
+        <div class="h-[140px] md:h-56 bg-gray-100 flex-shrink-0 relative rounded-t-3xl md:rounded-t-2xl overflow-hidden">
           <img id="modal-img" alt="" class="w-full h-full object-cover">
           <button id="modal-close"
             class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center text-xl leading-none hover:bg-black/60 active:scale-95 transition"
