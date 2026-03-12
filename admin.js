@@ -535,8 +535,9 @@ const AdminState = (() => {
     const custEl = qs('#modal-detail-customer');
     if(custEl){
       const c = o.customer || {};
-      const info = (c.name || 'Chưa có') + ' · ' + (c.phone || '---');
-      custEl.textContent = info;
+      custEl.innerHTML =
+        '<div class="flex items-center gap-2 mb-1"><span class="text-xs text-gray-500 w-28 shrink-0">Tên khách hàng</span><span class="text-base text-gray-100 font-semibold">' + (c.name || 'Chưa có') + '</span></div>' +
+        '<div class="flex items-center gap-2"><span class="text-xs text-gray-500 w-28 shrink-0">Số điện thoại</span><span class="text-base text-gray-200 font-medium tracking-wide">' + (c.phone || '---') + '</span></div>';
     }
 
     // Address
@@ -558,17 +559,17 @@ const AdminState = (() => {
       itemsEl.innerHTML = '';
       const tableWrap = el('div', 'overflow-x-auto rounded-xl border border-white/10');
       const table = el('table', 'w-full text-xs text-left');
-      table.innerHTML = '<thead class="bg-gray-900/70 text-gray-400"><tr><th class="px-3 py-2">Món</th><th class="px-3 py-2">Size</th><th class="px-3 py-2 text-right">SL</th><th class="px-3 py-2 text-right">Đơn giá</th><th class="px-3 py-2 text-right">Thành tiền</th></tr></thead>';
+      table.innerHTML = '<thead class="bg-gray-900/70 text-gray-400 text-xs uppercase tracking-wider"><tr><th class="px-4 py-3">Tên món</th><th class="px-4 py-3">Size</th><th class="px-4 py-3 text-center">SL</th><th class="px-4 py-3 text-right">Đơn giá</th><th class="px-4 py-3 text-right">Thành tiền</th></tr></thead>';
       const tbody = document.createElement('tbody');
       o.items.forEach(function (i) {
         const tr = document.createElement('tr');
-        tr.className = 'border-t border-white/5 bg-gray-800/40';
+        tr.className = 'border-t border-white/5 hover:bg-gray-700/30 transition-colors';
         const unitPriceForDisplay = i.unitPriceK || i.priceK || 0;
-        const nameCell = `<td class="px-3 py-2 text-gray-200">${i.name || ''}${i.selected_option ? '<br><small class="text-gray-400 italic">Lựa chọn: ' + i.selected_option + '</small>' : ''}</td>`;
-        const sizeCell = `<td class="px-3 py-2 text-gray-300">${i.size || '—'}</td>`;
-        const qtyCell = `<td class="px-3 py-2 text-right text-gray-300">${i.qty || 0}</td>`;
-        const unitCell = `<td class="px-3 py-2 text-right text-gray-300">${vndK(unitPriceForDisplay)}</td>`;
-        const subCell = `<td class="px-3 py-2 text-right text-gray-100 font-medium">${vndK((i.qty || 0) * unitPriceForDisplay)}</td>`;
+        const nameCell = `<td class="px-4 py-3 text-sm text-gray-100 font-medium">${i.name || ''}${i.selected_option ? '<div class="text-xs text-gray-400 italic mt-0.5">Lựa chọn: ' + i.selected_option + '</div>' : ''}</td>`;
+        const sizeCell = `<td class="px-4 py-3 text-sm text-gray-300">${i.size || '—'}</td>`;
+        const qtyCell = `<td class="px-4 py-3 text-sm text-center font-semibold text-gray-100">${i.qty || 0}</td>`;
+        const unitCell = `<td class="px-4 py-3 text-sm text-right text-gray-400">${vndK(unitPriceForDisplay)}</td>`;
+        const subCell = `<td class="px-4 py-3 text-sm text-right text-white font-bold">${vndK((i.qty || 0) * unitPriceForDisplay)}</td>`;
         tr.innerHTML = nameCell + sizeCell + qtyCell + unitCell + subCell;
         tbody.appendChild(tr);
       });
