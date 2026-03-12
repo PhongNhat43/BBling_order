@@ -1,6 +1,6 @@
 'use strict';
 
-const PLACEHOLDER_IMG = 'https://images.unsplash.com/photo-1500336624523-d727130c3328?auto=format&fit=crop&w=800&q=60';
+const PLACEHOLDER_IMG = 'image/placeHolder.png';
 
 const state = { cart: {} };
 
