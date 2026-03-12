@@ -13,6 +13,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -77,6 +78,64 @@
       to   { width: 0%; }
     }
     .notif-progress-bar { animation: notif-progress var(--dur, 5s) linear forwards; }
+    /* ── Drag-and-drop sort styles ─────────────────────────── */
+    .sort-handle {
+      display: none;              /* ẩn mặc định — chỉ hiện khi sort-edit-mode */
+      cursor: grab;
+      opacity: 0.45;
+      transition: opacity 0.15s;
+      flex-shrink: 0;
+    }
+    #tab-menu.sort-edit-mode .sort-handle { display: inline-block; }
+    .sort-handle:hover { opacity: 0.9; }
+    .sort-handle:active { cursor: grabbing; }
+    /* Banner nhắc nhở khi trong chế độ sắp xếp */
+    #sort-mode-hint {
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+    #tab-menu.sort-edit-mode #sort-mode-hint { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .sortable-ghost {
+      opacity: 0.35;
+      background: rgba(194, 65, 12, 0.15) !important;
+      border: 2px dashed rgba(194, 65, 12, 0.5) !important;
+    }
+    .sortable-drag {
+      opacity: 1 !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.45) !important;
+      transform: scale(1.02);
+    }
+    .sortable-chosen { outline: 2px solid rgba(194, 65, 12, 0.4); }
+
+    /* ── Category Group Styles (Group by Category) ────────────── */
+    .category-group {
+      transition: all 0.15s ease;
+    }
+    .group-header {
+      user-select: none;
+    }
+    .group-header:hover {
+      background-color: rgba(55, 65, 81, 1) !important;
+    }
+    .group-content {
+      transition: max-height 0.2s ease, opacity 0.2s ease;
+      max-height: 2000px;
+      opacity: 1;
+    }
+    .group-content.hidden {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+      border: none !important;
+    }
+    [data-toggle-icon] {
+      transition: transform 0.2s ease;
+      display: inline-block;
+    }
+
     /* Bell shake when unread notifications exist */
     @keyframes bell-shake {
       0%,100% { transform: rotate(0deg); }
@@ -289,12 +348,16 @@
       <section id="tab-menu" class="rounded-2xl bg-gray-800 border border-white/10 p-4 shadow-soft hidden md:col-span-2">
         <div class="flex items-center justify-between mb-3">
           <div class="font-semibold">Quản lý Menu</div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <button id="sort-edit-btn" class="btn-add px-3 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs">⠿ Chỉnh sửa vị trí</button>
+            <button id="sort-save-btn" class="hidden px-3 py-1 rounded-lg bg-green-700 hover:bg-green-600 text-white text-xs">✓ Lưu vị trí</button>
+            <button id="sort-cancel-btn" class="hidden px-3 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-white text-xs">✕ Hủy</button>
             <button id="add-cat" class="btn-add px-3 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600">+ Danh mục</button>
             <button id="add-item" class="btn-add px-3 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600">+ Món</button>
           </div>
         </div>
         <div class="text-xs text-gray-400 mb-3">Hỗ trợ size động: thêm/xóa size tùy ý (vd: 350ml, Chai 1L, Ly lớn) trong modal Thêm/Sửa món.</div>
+        <div id="sort-mode-hint" class="mb-3 px-3 py-2 rounded-lg bg-accent/20 border border-accent/30 text-xs text-accent">⠿ Chế độ sắp xếp đang bật — kéo biểu tượng ⠿ để sắp xếp lại. Nhấn <strong>Lưu vị trí</strong> khi xong hoặc <strong>Hủy</strong> để khôi phục.</div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <div class="text-sm mb-2 text-gray-400">Danh mục</div>

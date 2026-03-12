@@ -339,7 +339,8 @@
         info.className = 'flex-1 min-w-0'
         const unitPrice = i.unitPriceK || i.priceK || 0
         const nameDisplay = (i.qty || 1) + ' × ' + i.name + (i.size ? ' (Size ' + i.size + ')' : '')
-        info.innerHTML = '<div class="text-sm font-medium truncate">' + nameDisplay + '</div>'
+        const optDisplay = i.selected_option ? '<small class="text-primary/50 italic text-xs">Lựa chọn: ' + i.selected_option + '</small>' : ''
+        info.innerHTML = '<div class="text-sm font-medium truncate">' + nameDisplay + '</div>' + optDisplay
         const pr = document.createElement('div')
         pr.className = 'text-sm font-semibold text-accent flex-shrink-0'
         pr.textContent = formatVND((i.qty || 1) * unitPrice)

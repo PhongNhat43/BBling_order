@@ -36,8 +36,12 @@ const menuRoot = document.getElementById('menu-root');
 
 function renderMenu() {
   const categories = getMenuForCustomer();
+  console.log('[BB Debug] renderMenu - Dữ liệu Menu nhận được:', categories.map(c => ({ id: c.id, name: c.name, sort_order: c.sort_order, items: c.items.map(i => ({ id: i.id, sort_order: i.sort_order })) })));
+  // Defensive sort (sort_order đã được áp dụng trong getMenuForCustomer; đây là lớp bảo vệ thêm)
+  categories.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   menuRoot.innerHTML = '';
   categories.forEach(cat => {
+    cat.items.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
     const section = document.createElement('div');
     section.id = `cat-${slugifyCategory(cat.name)}`;
     section.dataset.catId = section.id;
@@ -80,28 +84,83 @@ function renderMenu() {
   renderMobileCategoryTabs(categories);
 }
 
+let _pcDropdownListenerAdded = false;
+
 function renderMobileCategoryTabs(categories) {
   const tabsRoot = document.getElementById('mobile-category-tabs');
-  if (!tabsRoot) return;
+  const pcGrid = document.getElementById('pc-category-grid');
 
-  tabsRoot.innerHTML = '';
-  categories.forEach((cat, index) => {
-    const targetId = `cat-${slugifyCategory(cat.name)}`;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'px-3 py-2 rounded-full border border-primary/20 bg-white text-primary text-xs font-semibold whitespace-nowrap active:scale-95 transition min-h-[48px]';
-    if (index === 0) btn.classList.add('bg-primary', 'text-cream');
-    btn.textContent = cat.name;
-    btn.dataset.target = targetId;
-    btn.addEventListener('click', () => {
-      const target = document.getElementById(targetId);
-      if (!target) return;
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      tabsRoot.querySelectorAll('button').forEach((el) => el.classList.remove('bg-primary', 'text-cream'));
-      btn.classList.add('bg-primary', 'text-cream');
+  // Mobile: horizontal scroll tabs
+  if (tabsRoot) {
+    tabsRoot.innerHTML = '';
+    categories.forEach((cat, index) => {
+      const targetId = `cat-${slugifyCategory(cat.name)}`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'px-3 py-2 rounded-full border border-primary/20 bg-white text-primary text-xs font-semibold whitespace-nowrap active:scale-95 transition min-h-[48px]';
+      if (index === 0) btn.classList.add('bg-primary', 'text-cream');
+      btn.textContent = cat.name;
+      btn.dataset.target = targetId;
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(targetId);
+        if (!target) return;
+        const categoryBar = document.getElementById('mobile-category-sticky');
+        const barBottom = categoryBar ? categoryBar.getBoundingClientRect().bottom : 0;
+        const targetTop = target.getBoundingClientRect().top + window.scrollY - barBottom - 8;
+        window.scrollTo({ top: targetTop, behavior: 'smooth' });
+        tabsRoot.querySelectorAll('button').forEach((el) => el.classList.remove('bg-primary', 'text-cream'));
+        btn.classList.add('bg-primary', 'text-cream');
+      });
+      tabsRoot.appendChild(btn);
     });
-    tabsRoot.appendChild(btn);
-  });
+  }
+
+  // Desktop: dropdown grid
+  if (pcGrid) {
+    pcGrid.innerHTML = '';
+    categories.forEach((cat) => {
+      const targetId = `cat-${slugifyCategory(cat.name)}`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'px-3 py-2 rounded-xl text-xs font-semibold text-primary border border-primary/10 bg-cream/60 hover:bg-primary hover:text-cream active:scale-95 transition text-center';
+      btn.textContent = cat.name;
+      btn.dataset.target = targetId;
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(targetId);
+        if (!target) return;
+        const header = document.getElementById('main-header');
+        const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+        const targetTop = target.getBoundingClientRect().top + window.scrollY - headerBottom - 12;
+        window.scrollTo({ top: targetTop, behavior: 'smooth' });
+        const dd = document.getElementById('pc-category-dropdown');
+        if (dd) dd.classList.add('hidden');
+      });
+      pcGrid.appendChild(btn);
+    });
+  }
+
+  setupPcDropdown();
+}
+
+function setupPcDropdown() {
+  const trigger = document.getElementById('pc-category-trigger');
+  const dropdown = document.getElementById('pc-category-dropdown');
+  if (!trigger || !dropdown) return;
+
+  trigger.onclick = () => {
+    dropdown.classList.toggle('hidden');
+  };
+
+  if (!_pcDropdownListenerAdded) {
+    _pcDropdownListenerAdded = true;
+    document.addEventListener('click', (e) => {
+      const dd = document.getElementById('pc-category-dropdown');
+      const trig = document.getElementById('pc-category-trigger');
+      if (!dd || dd.classList.contains('hidden')) return;
+      if (trig && trig.contains(e.target)) return;
+      if (!dd.contains(e.target)) dd.classList.add('hidden');
+    });
+  }
 }
 
 function updateMobileLayoutMetrics() {
@@ -130,11 +189,13 @@ function runAddFeedback() {
 
 let modalState = { id: null, qty: 1, opts: new Set(), note: '', size: null };
 const modalEl = document.getElementById('product-modal');
-const modalSheet = modalEl.querySelector('div.absolute');
+const modalSheet = document.getElementById('modal-sheet');
 const modalName = document.getElementById('modal-name');
 const modalPrice = document.getElementById('modal-price');
 const modalSizeSection = document.getElementById('modal-size-section');
 const modalSizeOptions = document.getElementById('modal-size-options');
+const modalOptionsSection = document.getElementById('modal-options-section');
+const modalOptionsContainer = document.getElementById('modal-options-container');
 const modalImg = document.getElementById('modal-img');
 const modalDesc = document.getElementById('modal-desc');
 const qtyDec = document.getElementById('qty-dec');
@@ -226,10 +287,54 @@ function renderSizeOptions(item) {
   });
 }
 
+function renderDynamicOptions(item) {
+  if (!modalOptionsSection || !modalOptionsContainer) return;
+  const opts = Array.isArray(item.options) ? item.options.filter(function(o) { return String(o).trim(); }) : [];
+  console.log('[INDEX DEBUG] renderDynamicOptions():', {
+    itemName: item.name,
+    itemOptions: item.options,
+    filteredCount: opts.length,
+    options: opts
+  });
+  modalOptionsSection.classList.toggle('hidden', !opts.length);
+  modalOptionsContainer.innerHTML = '';
+  opts.forEach(function(opt) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = opt;
+    btn.className = 'dyn-opt px-3 py-1.5 rounded-full border border-primary/20 text-xs hover:shadow-lg active:scale-95 transition bg-white';
+    btn.addEventListener('click', function() {
+      console.log('[INDEX DEBUG] Option clicked:', { option: opt, previousValue: modalState.selected_option });
+      if (modalState.selected_option === opt) {
+        modalState.selected_option = '';
+        btn.classList.remove('bg-primary', 'text-cream');
+        btn.classList.add('bg-white');
+        console.log('[INDEX DEBUG] Option deselected:', { option: opt, newValue: '' });
+      } else {
+        modalState.selected_option = opt;
+        modalOptionsContainer.querySelectorAll('.dyn-opt').forEach(function(b) {
+          b.classList.remove('bg-primary', 'text-cream');
+          b.classList.add('bg-white');
+        });
+        btn.classList.remove('bg-white');
+        btn.classList.add('bg-primary', 'text-cream');
+        console.log('[INDEX DEBUG] Option selected:', { option: opt, newValue: opt });
+      }
+    });
+    modalOptionsContainer.appendChild(btn);
+  });
+}
+
 function openProduct(id) {
   const item = findItemById(id);
   if (!item) return;
-  modalState = { id, qty: 1, opts: new Set(), note: '', size: null };
+  console.log('[INDEX DEBUG] openProduct():', {
+    itemId: id,
+    itemName: item.name,
+    itemOptions: item.options,
+    optionsCount: Array.isArray(item.options) ? item.options.length : 0
+  });
+  modalState = { id, qty: 1, opts: new Set(), note: '', size: null, selected_option: '' };
   modalName.textContent = item.name;
   modalImg.src = item.img;
   setImgFallback(modalImg);
@@ -237,6 +342,7 @@ function openProduct(id) {
   qtyVal.textContent = '1';
   modalNote.value = '';
   renderSizeOptions(item);
+  renderDynamicOptions(item);
   refreshModalPricing();
   lockScroll();
   const header = document.getElementById('main-header');
@@ -248,6 +354,7 @@ function openProduct(id) {
     modalEl.classList.add('opacity-100');
     modalSheet.classList.remove('translate-y-full');
   }, 10);
+  console.log('[INDEX DEBUG] Product modal opened with modalState:', modalState, 'item.options:', item.options);
 }
 
 function closeProduct() {
@@ -260,7 +367,7 @@ function closeProduct() {
     modalEl.classList.add('pointer-events-none');
     unlockScroll();
     // Reset modal state
-    modalState = { id: null, qty: 1, opts: new Set(), note: '', size: null };
+    modalState = { id: null, qty: 1, opts: new Set(), note: '', size: null, selected_option: '' };
   }, 300);
 }
 
@@ -269,8 +376,10 @@ modalEl.addEventListener('click', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !modalEl.classList.contains('pointer-events-none')) {
-    closeProduct();
+  if (e.key === 'Escape') {
+    if (!modalEl.classList.contains('pointer-events-none')) closeProduct();
+    const dd = document.getElementById('pc-category-dropdown');
+    if (dd) dd.classList.add('hidden');
   }
 });
 
@@ -308,16 +417,16 @@ modalAdd.addEventListener('click', () => {
   if (getRenderableSizes(item).length > 0 && !modalState.size) return;
   if (!modalState.qty || modalState.qty <= 0) return;
   const unitPriceK = getSelectedUnitPriceK(item);
-  const optsArr = Array.from(modalState.opts).sort();
   const note = modalNote.value.trim();
   const sizeLabel = modalState.size || '';
   const sizeKey = sizeLabel.replace(/\|/g, '/');
-  const key = `${item.id}|${sizeKey}|${optsArr.join(',')}|${note}`;
+  const selected_option = modalState.selected_option || '';
+  const key = `${item.id}|${sizeKey}|${selected_option}|${note}`;
   if (!state.cart[key]) {
     state.cart[key] = {
       ...item,
       qty: 0,
-      options: optsArr,
+      selected_option,
       note,
       size: sizeLabel,
       unitPriceK,
@@ -393,7 +502,6 @@ function renderSheet() {
       name.className = 'font-medium';
       const nameParts = [it.name];
       if (it.size) nameParts.push(`size ${it.size}`);
-      if (it.options && it.options.length) nameParts.push(it.options.join(', '));
       const nameText = nameParts.join(' · ');
       name.textContent = nameText;
 
@@ -403,6 +511,12 @@ function renderSheet() {
 
       textCol.appendChild(name);
       textCol.appendChild(sub);
+      if (it.selected_option) {
+        const optEl = document.createElement('small');
+        optEl.className = 'text-xs text-primary/50 italic';
+        optEl.textContent = 'Lựa chọn: ' + it.selected_option;
+        textCol.appendChild(optEl);
+      }
 
       if (it.note) {
         const note = document.createElement('div');
@@ -461,14 +575,15 @@ closeSheet.addEventListener('click', closeSheetFn);
 if (sheetBackdrop) sheetBackdrop.addEventListener('click', closeSheetFn);
 confirmOrder.addEventListener('click', () => {
   const note = document.getElementById('note').value.trim();
-  const items = Object.values(state.cart).map(({ id, name, size, unitPriceK, priceK, qty, img }) => ({
+  const items = Object.values(state.cart).map(({ id, name, size, unitPriceK, priceK, qty, img, selected_option }) => ({
     id,
     name,
     size: size || null,
     unitPriceK: unitPriceK || priceK,
     priceK: unitPriceK || priceK,
     qty,
-    img
+    img,
+    selected_option: selected_option || null
   }));
   if (!items.length) { closeSheetFn(); return; }
   const bill = 'BILL' + Date.now().toString().slice(-6);

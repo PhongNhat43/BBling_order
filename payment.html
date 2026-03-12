@@ -289,10 +289,12 @@
           row.className = 'flex items-center gap-3 px-3 py-2.5'
           const unitPrice = it.unitPriceK || it.priceK || 0
           const nameDisplay = it.name + (it.size ? ' (Size ' + it.size + ')' : '')
+          const optDisplay = it.selected_option ? `<small class="text-xs text-primary/50 italic">Lựa chọn: ${it.selected_option}</small>` : ''
           row.innerHTML = `
           <img src="${it.img || ''}" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-primary/10" onerror="this.style.display='none'" />
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium truncate">${nameDisplay}</div>
+            ${optDisplay}
             <div class="text-xs text-primary/50">${formatVND(unitPrice * 1000)} × ${it.qty}</div>
           </div>
           <div class="text-sm font-semibold text-accent flex-shrink-0">${formatVND(unitPrice * it.qty * 1000)}</div>

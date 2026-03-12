@@ -77,36 +77,31 @@
       will-change: transform, opacity;
     }
 
-    /* ── Product modal: Desktop layout ───────────────────────────────────────
-       On md+ screens, anchor the sheet near the top (below header) instead of
-       at the bottom. The translate-y-full class is flipped to slide UP off-screen
-       when closed, so the animation remains smooth without any JS changes.
+    /* ── Product modal: Centered layout (mobile & desktop) ────────────────
+       Modal is vertically centered on all screen sizes.
+       translate-y-full slides it down off-screen when closed.
     ──────────────────────────────────────────────────────────────────────── */
-    @media (min-width: 768px) {
-      #product-modal>div.absolute {
-        top: 9rem;
-        /* ~80px below a typical 64px sticky header */
-        bottom: auto;
-      }
+    #product-modal > div {
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    #product-modal > div.translate-y-full {
+      opacity: 0;
+    }
+    #product-modal > div:not(.translate-y-full) {
+      opacity: 1;
+    }
 
-      /* When Tailwind adds translate-y-full (closed state), override to slide
-         the modal UP above the viewport instead of DOWN below it. */
-      #product-modal>div.translate-y-full {
-        transform: translateX(-50%) translateY(-110%) !important;
-      }
+    :root {
+      --bb-mobile-header-h: 96px;
+    }
+
+    #mobile-category-sticky {
+      position: sticky;
+      top: var(--bb-mobile-header-h);
+      z-index: 25;
     }
 
     @media (max-width: 767.98px) {
-      :root {
-        --bb-mobile-header-h: 96px;
-      }
-
-      #mobile-category-sticky {
-        position: sticky;
-        top: var(--bb-mobile-header-h);
-        z-index: 25;
-      }
-
       #mobile-category-tabs {
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
@@ -181,7 +176,7 @@
 <body class="min-h-full bg-cream text-primary font-sans paper">
   <div class="relative min-h-screen botanical">
     <header id="main-header" class="sticky top-0 z-30 px-4 pt-6 pb-4 md:px-8 transition-transform duration-300">
-      <div class="mx-auto max-w-2xl">
+      <div class="mx-auto max-w-2xl relative">
         <div
           class="flex items-center justify-between md:flex-wrap md:justify-center gap-x-3 gap-y-2 px-4 py-2.5 rounded-2xl bg-white/70 backdrop-blur shadow-soft">
           <div class="mobile-brand md:contents">
@@ -189,6 +184,14 @@
             <span class="hidden md:inline text-xs uppercase tracking-[0.18em] text-primary/70">Coffee &amp; Eatery</span>
           </div>
           <span class="hidden md:inline-flex text-xs px-3 py-1 rounded-full bg-accent text-white">0985.679.565</span>
+          <!-- PC: Dropdown category trigger -->
+          <button id="pc-category-trigger" type="button"
+            class="hidden md:inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-full bg-white text-primary border border-primary/20 shadow-soft hover:shadow-lg active:scale-95 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            Menu
+          </button>
           <div class="mobile-actions md:contents">
             <a href="tracking.html?mode=search"
               class="text-xs px-3 py-2 rounded-full bg-white text-primary border border-primary/20 shadow-soft hover:shadow-lg active:scale-95 transition min-h-[40px] inline-flex items-center">Tra
@@ -202,6 +205,12 @@
               </svg>
               <span>Chat</span>
             </button>
+          </div>
+        </div>
+        <!-- PC: Category dropdown (anchored below pill) -->
+        <div id="pc-category-dropdown" class="hidden absolute left-0 right-0 top-full z-40 pt-2">
+          <div class="rounded-2xl bg-white/90 backdrop-blur-md shadow-xl border border-primary/10 p-4">
+            <div id="pc-category-grid" class="grid grid-cols-3 gap-2"></div>
           </div>
         </div>
       </div>
@@ -320,13 +329,13 @@
   </div>
   <!-- Product Detail Modal -->
   <div id="product-modal"
-    class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300 modal-animated flex items-end justify-center z-[100]">
-    <div
-      class="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-full transition-transform duration-300 w-full max-w-2xl modal-animated">
-      <div class="mx-3 mb-3 rounded-t-3xl md:rounded-2xl bg-white shadow-soft flex flex-col max-h-[72vh] md:max-h-[85vh]">
+    class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300 modal-animated flex items-center justify-center z-[100] p-4 overflow-hidden">
+    <div id="modal-sheet"
+      class="translate-y-full transition-transform duration-300 w-full max-w-lg modal-animated">
+      <div class="rounded-2xl bg-white shadow-soft flex flex-col max-h-[85vh] overflow-hidden">
 
         <!-- Fixed image + close overlay -->
-        <div class="h-[140px] md:h-56 bg-gray-100 flex-shrink-0 relative rounded-t-3xl md:rounded-t-2xl overflow-hidden">
+        <div class="h-[140px] md:h-56 bg-gray-100 flex-shrink-0 relative rounded-t-2xl overflow-hidden">
           <img id="modal-img" alt="" class="w-full h-full object-cover">
           <button id="modal-close"
             class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 backdrop-blur text-white flex items-center justify-center text-xl leading-none hover:bg-black/60 active:scale-95 transition"
@@ -344,30 +353,18 @@
             <div class="text-xs mb-1">Chọn size</div>
             <div id="modal-size-options" class="flex flex-wrap gap-2"></div>
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <div class="text-xs mb-1">Tùy chọn nhanh</div>
-              <div class="flex flex-wrap gap-2">
-                <button data-opt="less-ice"
-                  class="opt px-3 py-1 rounded-full border border-primary/20 text-xs hover:shadow-lg active:scale-95 transition">Ít
-                  đá</button>
-                <button data-opt="more-sugar"
-                  class="opt px-3 py-1 rounded-full border border-primary/20 text-xs hover:shadow-lg active:scale-95 transition">Nhiều
-                  đường</button>
-                <button data-opt="no-sugar"
-                  class="opt px-3 py-1 rounded-full border border-primary/20 text-xs hover:shadow-lg active:scale-95 transition">Không
-                  đường</button>
-              </div>
-            </div>
-            <div>
-              <div class="text-xs mb-1">Số lượng</div>
-              <div class="inline-flex items-center gap-2">
-                <button id="qty-dec"
-                  class="w-9 h-9 rounded-lg bg-primary/10 hover:shadow-lg active:scale-95 transition">-</button>
-                <div id="qty-val" class="w-8 text-center">1</div>
-                <button id="qty-inc"
-                  class="w-9 h-9 rounded-lg bg-primary text-cream hover:shadow-lg active:scale-95 transition">+</button>
-              </div>
+          <div id="modal-options-section" class="hidden">
+            <div class="text-xs mb-1">Tùy chọn</div>
+            <div id="modal-options-container" class="flex flex-wrap gap-2"></div>
+          </div>
+          <div>
+            <div class="text-xs mb-1">Số lượng</div>
+            <div class="inline-flex items-center gap-2">
+              <button id="qty-dec"
+                class="w-9 h-9 rounded-lg bg-primary/10 hover:shadow-lg active:scale-95 transition">-</button>
+              <div id="qty-val" class="w-8 text-center">1</div>
+              <button id="qty-inc"
+                class="w-9 h-9 rounded-lg bg-primary text-cream hover:shadow-lg active:scale-95 transition">+</button>
             </div>
           </div>
           <div>

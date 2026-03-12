@@ -564,7 +564,7 @@ const AdminState = (() => {
         const tr = document.createElement('tr');
         tr.className = 'border-t border-white/5 bg-gray-800/40';
         const unitPriceForDisplay = i.unitPriceK || i.priceK || 0;
-        const nameCell = `<td class="px-3 py-2 text-gray-200">${i.name || ''}</td>`;
+        const nameCell = `<td class="px-3 py-2 text-gray-200">${i.name || ''}${i.selected_option ? '<br><small class="text-gray-400 italic">Lựa chọn: ' + i.selected_option + '</small>' : ''}</td>`;
         const sizeCell = `<td class="px-3 py-2 text-gray-300">${i.size || '—'}</td>`;
         const qtyCell = `<td class="px-3 py-2 text-right text-gray-300">${i.qty || 0}</td>`;
         const unitCell = `<td class="px-3 py-2 text-right text-gray-300">${vndK(unitPriceForDisplay)}</td>`;
@@ -1114,12 +1114,139 @@ const AdminState = (() => {
       }
     });
   }
+  // ── Sort-order helpers ─────────────────────────────────────────────────
+  function normaliseSortOrder(arr) {
+    // Ensure every item has a numeric sort_order; re-index to 0,1,2,…
+    arr.forEach(function (x, i) {
+      if (typeof x.sort_order !== 'number') x.sort_order = i;
+    });
+    arr.sort((a, b) => a.sort_order - b.sort_order);
+    arr.forEach((x, i) => { x.sort_order = i; });
+  }
+
+  function saveCatOrder() {
+    normaliseSortOrder(categories);
+    persistMenu();
+  }
+
+  function saveItemOrder() {
+    normaliseSortOrder(items);
+    persistMenu();
+  }
+
+  function initSortable(listEl, dataArr, onEnd) {
+    if (typeof Sortable === 'undefined') return;
+    Sortable.create(listEl, {
+      handle: '.sort-handle',
+      animation: 180,
+      ghostClass: 'sortable-ghost',
+      dragClass: 'sortable-drag',
+      chosenClass: 'sortable-chosen',
+      onEnd: function (evt) {
+        const moved = dataArr.splice(evt.oldIndex, 1)[0];
+        dataArr.splice(evt.newIndex, 0, moved);
+        dataArr.forEach((x, i) => { x.sort_order = i; });
+        onEnd();
+      }
+    });
+  }
+  // ───────────────────────────────────────────────────────────────────────
+
+  // Snapshot of sort order before entering sort-edit mode (for cancel)
+  let _sortSnapshot = null;
+  let _catSortableInst = null;
+  let _itemSortableInst = null;
+
+  function _rebindCatSortable() {
+    if (typeof Sortable === 'undefined') return;
+    const listEl = qs('#cat-list');
+    if (!listEl) return;
+    // Destroy previous instance to avoid duplicate onEnd listeners
+    if (_catSortableInst) { try { _catSortableInst.destroy(); } catch(e){} _catSortableInst = null; }
+    _catSortableInst = Sortable.create(listEl, {
+      handle: '.sort-handle',
+      animation: 180,
+      ghostClass: 'sortable-ghost',
+      dragClass: 'sortable-drag',
+      chosenClass: 'sortable-chosen',
+      onEnd: function(evt) {
+        if (evt.oldIndex === evt.newIndex) return;
+        // Always access module-level `categories` (avoids stale closure reference)
+        const moved = categories.splice(evt.oldIndex, 1)[0];
+        categories.splice(evt.newIndex, 0, moved);
+        categories.forEach(function(x, i) { x.sort_order = i; });
+        console.log('[SORT] Cat dragged', evt.oldIndex, '→', evt.newIndex, categories.map(function(c){ return c.name; }));
+        persistMenu();
+      }
+    });
+  }
+
+  function _rebindItemSortable() {
+    // NOTE: Sortable instances for items are now created per-category in renderItems()
+    // This function is kept for backward compatibility and does nothing now.
+    console.log('[INFO] _rebindItemSortable() — Items now use per-category Sortable instances');
+  }
+
+  function enterSortMode() {
+    const tabMenu = qs('#tab-menu');
+    if (!tabMenu) return;
+    _sortSnapshot = {
+      categories: categories.map(function (c) { return Object.assign({}, c); }),
+      items: items.map(function (i) { return Object.assign({}, i); })
+    };
+    tabMenu.classList.add('sort-edit-mode');
+    const sortEditBtn = qs('#sort-edit-btn');
+    const sortSaveBtn = qs('#sort-save-btn');
+    const sortCancelBtn = qs('#sort-cancel-btn');
+    if (sortEditBtn) sortEditBtn.classList.add('hidden');
+    if (sortSaveBtn) sortSaveBtn.classList.remove('hidden');
+    if (sortCancelBtn) sortCancelBtn.classList.remove('hidden');
+  }
+
+  function exitSortMode(save) {
+    const tabMenu = qs('#tab-menu');
+    if (!tabMenu) return;
+    tabMenu.classList.remove('sort-edit-mode');
+    if (save) {
+      console.log('🔄 [SORT MODE] Confirming save...');
+      // Order already persisted on each drag; call once more to ensure final state
+      categories.forEach(function(x, i) { x.sort_order = i; });
+      items.forEach(function(x, i) { x.sort_order = i; });
+      persistMenu();
+      console.log('📋 [SORT MODE] Categories:', categories.map(function(c){ return c.name + '(' + c.sort_order + ')'; }));
+      console.log('✅ [SORT MODE] Done');
+      if (typeof Toast !== 'undefined') Toast.success('✓ Đã lưu vị trí sắp xếp');
+    } else if (_sortSnapshot) {
+      console.log('⚠️  [SORT MODE] Canceling sort mode - restoring snapshot');
+      categories.length = 0;
+      _sortSnapshot.categories.forEach(function (c) { categories.push(c); });
+      items.length = 0;
+      _sortSnapshot.items.forEach(function (i) { items.push(i); });
+      console.log('✅ [SORT MODE] Restored original sort order');
+    }
+    _sortSnapshot = null;
+    const sortEditBtn = qs('#sort-edit-btn');
+    const sortSaveBtn = qs('#sort-save-btn');
+    const sortCancelBtn = qs('#sort-cancel-btn');
+    if (sortEditBtn) sortEditBtn.classList.remove('hidden');
+    if (sortSaveBtn) sortSaveBtn.classList.add('hidden');
+    if (sortCancelBtn) sortCancelBtn.classList.add('hidden');
+    renderCategories();
+    renderItems();
+  }
+
   function renderCategories(){
     const root=qs('#cat-list'); if(!root) return; root.innerHTML='';
+    normaliseSortOrder(categories);
     categories.forEach(c=>{
-      const row=el('div','flex items-center justify-between rounded-lg bg-gray-700/50 p-3 border border-white/10');
-      row.appendChild(el('div','text-sm text-gray-200',c.name));
-      const r=el('div','flex items-center gap-1');
+      const row=el('div','flex items-center gap-2 rounded-lg bg-gray-700/50 p-3 border border-white/10');
+      row.dataset.id = c.id;
+      // Grab handle
+      const handle = el('span','sort-handle text-lg select-none','⠿');
+      handle.title = 'Kéo để sắp xếp';
+      row.appendChild(handle);
+      row.appendChild(el('div','text-sm text-emerald-400 font-medium flex-1',c.name));
+      const r=el('div','flex items-center gap-1 ml-auto');
       const ed=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs','Sửa');
       const del=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs','Xóa');
       ed.classList.add('btn-edit');
@@ -1138,82 +1265,199 @@ const AdminState = (() => {
       });
       r.appendChild(ed); r.appendChild(del); row.appendChild(r); root.appendChild(row);
     });
+    _rebindCatSortable();
   }
+  // Store item-group Sortable instances by category ID
+  const _itemGroupSortables = {};
+
   function renderItems(){
     const root=qs('#item-list'); if(!root) return; root.innerHTML='';
-    items.forEach(it=>{
-      const row=el('div','flex items-center justify-between rounded-lg bg-gray-700/50 p-3 border border-white/10');
-      const left=el('div','');
-      left.appendChild(el('div','font-medium text-sm text-gray-200',it.name+(it.visible!==false?'':' (Ẩn)')));
-      const dynamicSizes = getItemAvailableSizes(it);
-      const sizeSummary = dynamicSizes.length
-        ? dynamicSizes.map(function (s) { return `${s.label}:${s.priceK}k`; }).join(' | ')
-        : `${it.priceK}k`;
-      left.appendChild(el('div','text-xs text-gray-500', `${sizeSummary} · ${(categories.find(c=>c.id===it.cat)?.name||'Chưa có danh mục')}`));
-      const r=el('div','flex items-center gap-1');
-      const hide=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs', it.visible!==false?'Ẩn':'Hiện');
-      const ed=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs','Sửa');
-      const del=el('button','px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs','Xóa');
-      hide.classList.add('btn-edit');
-      ed.classList.add('btn-edit');
-      del.classList.add('btn-delete');
-      hide.addEventListener('click', ()=>{
-        if (!canManageMenu()) { Toast.error('Bạn không có quyền chỉnh sửa menu'); return; }
-        it.visible=!it.visible; persistMenu(); renderItems();
-      });
-      ed.addEventListener('click', ()=>editProduct(function(){
-        const existingSizes = getItemAvailableSizes(it);
-        openModal('Sửa món',[
-          {type:'input',id:'it-name',value:it.name,placeholder:'Tên món'},
-          {type:'checkbox',id:'it-has-sizes',value:existingSizes.length>0,label:'Sản phẩm có size?'},
-          {type:'input',id:'it-price',value:String(it.priceK),placeholder:'Giá mặc định (k)'},
-          {type:'sizes-editor',id:'it-sizes-editor',value:existingSizes,dependsOn:'it-has-sizes'},
-          {type:'input',id:'it-desc',value:it.desc||'',placeholder:'Mô tả'},
-          {type:'file',id:'it-img',value:it.img||'',placeholder:'Chọn ảnh mới (để trống giữ nguyên)', accept:'image/*'},
-          {type:'select',id:'it-cat',value:it.cat,options:categories.map(c=>({value:c.id,label:c.name}))}
-        ], async()=>saveProduct(async function(){
-          it.name=qs('#it-name').value.trim()||it.name;
-          const hasSizes=qs('#it-has-sizes').checked;
-          const priceBase=Number(qs('#it-price').value); 
-          it.priceK=isNaN(priceBase)?it.priceK:Math.round(priceBase);
-
-          if(hasSizes){
-            const sizes = readDynamicSizesFromEditor('it-sizes-editor');
-            if (!sizes.length) { Toast.error('❌ Cần ít nhất 1 size hợp lệ'); return; }
-            it.hasSizes=true;
-            it.availableSizes=sizes;
-            const defaultEntry = sizes.find(function (s) { return s.isDefault; }) || sizes[0];
-            it.defaultSize=defaultEntry.label;
-            it.sizes = sizes.reduce(function (acc, s) { acc[s.label] = s.priceK; return acc; }, {});
-            it.priceK=defaultEntry.priceK;
-          } else {
-            it.hasSizes=false;
-            it.availableSizes=[];
-            it.sizes={};
-            it.defaultSize='';
-          }
+    normaliseSortOrder(items);
+    // DEBUG: Log items with options
+    console.log('[ADMIN DEBUG] renderItems() → Items with options:', items.map(it => ({
+      name: it.name,
+      options: it.options,
+      optionsCount: Array.isArray(it.options) ? it.options.length : 0
+    })));
+    
+    
+    // Clear old Sortable instances
+    Object.values(_itemGroupSortables).forEach(function(inst) {
+      if (inst) { try { inst.destroy(); } catch(e){} }
+    });
+    for (var key in _itemGroupSortables) delete _itemGroupSortables[key];
+    
+    // Group items by category and render
+    categories.forEach(function(cat, catIndex) {
+      const groupItems = items.filter(function(it) { return it.cat === cat.id && it.visible !== false; });
+      const groupItemsAll = items.filter(function(it) { return it.cat === cat.id; });
+      
+      // Category group wrapper
+      const group = el('div', 'category-group mb-4 rounded-lg border border-gray-700 overflow-hidden');
+      group.dataset.categoryId = cat.id;
+      
+      // Group header (collapsible)
+      const header = el('div', 'group-header bg-gray-800/70 p-3 border-l-4 border-primary cursor-pointer flex items-center justify-between hover:bg-gray-800');
+      header.dataset.toggle = cat.id;
+      
+      const headerLeft = el('div', 'flex items-center gap-2');
+      headerLeft.appendChild(el('span', 'font-bold text-emerald-400 italic text-sm', (catIndex + 1) + '. ' + cat.name));
+      const countBadge = el('span', 'px-2 py-0.5 rounded-full bg-gray-600/80 text-xs text-gray-300', groupItemsAll.length);
+      headerLeft.appendChild(countBadge);
+      header.appendChild(headerLeft);
+      
+      const headerRight = el('div', 'flex items-center gap-2');
+      const toggleIcon = el('span', 'text-gray-400 text-lg transition-transform', '▼');
+      toggleIcon.dataset.toggleIcon = cat.id;
+      headerRight.appendChild(toggleIcon);
+      header.appendChild(headerRight);
+      
+      // Content container — holds items for this category
+      const content = el('div', 'group-content border-t border-gray-700 p-2 space-y-2 bg-gray-900/30');
+      content.dataset.categoryId = cat.id;
+      
+      if (!groupItemsAll.length) {
+        const emptyMsg = el('div', 'text-xs text-gray-500 italic text-center py-4', '— Chưa có món nào trong danh mục này —');
+        content.appendChild(emptyMsg);
+      } else {
+        groupItemsAll.forEach(function(it) {
+          const row = el('div', 'flex items-center gap-2 rounded-lg bg-gray-700/50 p-3 border border-white/10');
+          row.dataset.id = it.id;
           
-          it.desc=qs('#it-desc').value.trim(); it.cat=qs('#it-cat').value;
-          const fileInput=qs('#it-img');
-          let loadingToast = null;
-          if(fileInput.files[0]){
-            loadingToast = Toast.loading('🔄 Đang nén ảnh...');
-            const compressed=await ImageUtils.compressMenuImage(fileInput.files[0]);
-            if(loadingToast) Toast.dismiss(loadingToast);
-            if(!compressed){ Toast.error('❌ Nén ảnh thất bại'); return; }
-            it.img=compressed;
-          }
-          persistMenu(); renderItems(); Toast.success('✓ Cập nhật món thành công');
-        }));
-      }));
-      del.addEventListener('click', ()=>{
-        openModal('Xóa món',[{type:'text',id:'t',value:'Xác nhận xóa?'}], ()=>{
-          if (!canManageMenu()) { Toast.error('Bạn không có quyền xóa món'); return; }
-          items=items.filter(x=>x.id!==it.id); persistMenu(); renderItems();
+          // Grab handle
+          const handle = el('span', 'sort-handle text-lg select-none', '⠿');
+          handle.title = 'Kéo để sắp xếp trong danh mục';
+          row.appendChild(handle);
+          
+          const left = el('div', 'flex-1 min-w-0');
+          left.appendChild(el('div', 'font-medium text-sm text-gray-200', it.name + (it.visible !== false ? '' : ' (Ẩn)')));
+          const dynamicSizes = getItemAvailableSizes(it);
+          const sizeSummary = dynamicSizes.length
+            ? dynamicSizes.map(function (s) { return s.label + ':' + s.priceK + 'k'; }).join(' | ')
+            : it.priceK + 'k';
+          left.appendChild(el('div', 'text-xs text-gray-500 truncate', sizeSummary));
+          row.appendChild(left);
+          
+          const r = el('div', 'flex items-center gap-1 ml-auto flex-shrink-0');
+          const hide = el('button', 'px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs', it.visible !== false ? 'Ẩn' : 'Hiện');
+          const ed = el('button', 'px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs', 'Sửa');
+          const del = el('button', 'px-2 py-1 rounded-lg border border-white/20 bg-gray-600 hover:bg-gray-500 text-xs', 'Xóa');
+          hide.classList.add('btn-edit');
+          ed.classList.add('btn-edit');
+          del.classList.add('btn-delete');
+          
+          hide.addEventListener('click', function() {
+            if (!canManageMenu()) { Toast.error('Bạn không có quyền chỉnh sửa menu'); return; }
+            it.visible = !it.visible; persistMenu(); renderItems();
+          });
+          
+          ed.addEventListener('click', function() { editProduct(function(){
+            const existingSizes = getItemAvailableSizes(it);
+            openModal('Sửa món', [
+              {type:'input', id:'it-name', value:it.name, placeholder:'Tên món'},
+              {type:'checkbox', id:'it-has-sizes', value:existingSizes.length > 0, label:'Sản phẩm có size?'},
+              {type:'input', id:'it-price', value:String(it.priceK), placeholder:'Giá mặc định (k)'},
+              {type:'sizes-editor', id:'it-sizes-editor', value:existingSizes, dependsOn:'it-has-sizes'},
+              {type:'input', id:'it-desc', value:it.desc || '', placeholder:'Mô tả'},
+              {type:'file', id:'it-img', value:it.img || '', placeholder:'Chọn ảnh mới (để trống giữ nguyên)', accept:'image/*'},
+              {type:'select', id:'it-cat', value:it.cat, options:categories.map(function(c) { return {value:c.id, label:c.name}; })},
+              {type:'options-editor', id:'it-options', value: it.options || [], placeholder:'Nhập tùy chọn rồi nhấn Enter...'}
+            ], async function() { 
+              return saveProduct(async function(){
+                it.name = qs('#it-name').value.trim() || it.name;
+                const hasSizes = qs('#it-has-sizes').checked;
+                const priceBase = Number(qs('#it-price').value); 
+                it.priceK = isNaN(priceBase) ? it.priceK : Math.round(priceBase);
+
+                if(hasSizes) {
+                  const sizes = readDynamicSizesFromEditor('it-sizes-editor');
+                  if (!sizes.length) { Toast.error('❌ Cần ít nhất 1 size hợp lệ'); return; }
+                  it.hasSizes = true;
+                  it.availableSizes = sizes;
+                  const defaultEntry = sizes.find(function (s) { return s.isDefault; }) || sizes[0];
+                  it.defaultSize = defaultEntry.label;
+                  it.sizes = sizes.reduce(function (acc, s) { acc[s.label] = s.priceK; return acc; }, {});
+                  it.priceK = defaultEntry.priceK;
+                } else {
+                  it.hasSizes = false;
+                  it.availableSizes = [];
+                  it.sizes = {};
+                  it.defaultSize = '';
+                }
+                
+                it.desc = qs('#it-desc').value.trim(); 
+                it.cat = qs('#it-cat').value;
+                it.options = readOptionsFromEditor('it-options');
+                const fileInput = qs('#it-img');
+                let loadingToast = null;
+                if(fileInput.files[0]) {
+                  loadingToast = Toast.loading('🔄 Đang nén ảnh...');
+                  const compressed = await ImageUtils.compressMenuImage(fileInput.files[0]);
+                  if(loadingToast) Toast.dismiss(loadingToast);
+                  if(!compressed) { Toast.error('❌ Nén ảnh thất bại'); return; }
+                  it.img = compressed;
+                }
+                persistMenu(); renderItems(); Toast.success('✓ Cập nhật món thành công');
+                // DEBUG: Log updated item with options
+                console.log('[ADMIN DEBUG] Sửa món thành công:', {
+                  id: it.id,
+                  name: it.name,
+                  options: it.options,
+                  inState: it.options
+                });
+              });
+            });
+          }); });
+          
+          del.addEventListener('click', function() {
+            openModal('Xóa món', [{type:'text', id:'t', value:'Xác nhận xóa?'}], function() {
+              if (!canManageMenu()) { Toast.error('Bạn không có quyền xóa món'); return; }
+              items = items.filter(function(x) { return x.id !== it.id; }); 
+              persistMenu(); renderItems();
+            });
+          });
+          
+          r.appendChild(hide); r.appendChild(ed); r.appendChild(del);
+          row.appendChild(r); content.appendChild(row);
         });
+      }
+      
+      group.appendChild(header);
+      group.appendChild(content);
+      root.appendChild(group);
+      
+      // Gắn Sortable instance cho group-content này
+      if (groupItemsAll.length > 0 && typeof Sortable !== 'undefined') {
+        _itemGroupSortables[cat.id] = Sortable.create(content, {
+          handle: '.sort-handle',
+          animation: 180,
+          ghostClass: 'sortable-ghost',
+          dragClass: 'sortable-drag',
+          chosenClass: 'sortable-chosen',
+          group: 'items-' + cat.id, // Ngăn kéo thả giữa các category
+          onEnd: function(evt) {
+            if (evt.oldIndex === evt.newIndex) return;
+            // Re-index sort_order chỉ cho items trong category này
+            const catItems = items.filter(function(it) { return it.cat === cat.id; });
+            catItems.forEach(function(x, i) { x.sort_order = i; });
+            console.log('[SORT] Item dragged in category ' + cat.name + ': ' + evt.oldIndex + ' → ' + evt.newIndex);
+            persistMenu();
+          }
+        });
+      }
+    });
+    
+    // Bind collapse/expand toggle
+    qsa('[data-toggle]').forEach(function(header) {
+      header.addEventListener('click', function() {
+        const catId = this.dataset.toggle;
+        const content = root.querySelector('[data-category-id="' + catId + '"].group-content');
+        const icon = this.querySelector('[data-toggle-icon="' + catId + '"]');
+        if (content && icon) {
+          content.classList.toggle('hidden');
+          icon.style.transform = content.classList.contains('hidden') ? 'rotate(-90deg)' : 'rotate(0deg)';
+        }
       });
-      r.appendChild(hide); r.appendChild(ed); r.appendChild(del);
-      row.appendChild(left); row.appendChild(r); root.appendChild(row);
     });
   }
 
@@ -1249,6 +1493,11 @@ const AdminState = (() => {
     if (!parsed.length) return [];
     if (!parsed.some(function (s) { return s.isDefault; })) parsed[0].isDefault = true;
     return parsed;
+  }
+
+  function readOptionsFromEditor(editorId) {
+    const tags = document.querySelectorAll('#' + editorId + '-tags [data-option-value]');
+    return Array.from(tags).map(function(t) { return t.dataset.optionValue; }).filter(Boolean);
   }
 
   function openModal(title, fields, onOk){
@@ -1353,6 +1602,45 @@ const AdminState = (() => {
         block.appendChild(editor);
         b.appendChild(block);
       }
+      else if(f.type==='options-editor'){
+        const optBlock = el('div', 'space-y-2');
+        const optHead = el('div', 'text-sm text-gray-300', 'Tùy chọn món (vd: Ít đường, Nóng...)');
+        const tagsContainer = el('div', 'flex flex-wrap gap-1.5 min-h-[32px] rounded-lg bg-gray-900/40 p-2');
+        tagsContainer.id = f.id + '-tags';
+        const initOpts = Array.isArray(f.value) ? f.value.filter(function(o) { return String(o).trim(); }) : [];
+        function addOptTag(text) {
+          const tag = el('span', 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/20 border border-accent/30 text-xs text-gray-200');
+          tag.dataset.optionValue = text;
+          tag.appendChild(el('span', '', text));
+          const rm = el('button', 'text-gray-400 hover:text-red-300', '×');
+          rm.type = 'button';
+          rm.addEventListener('click', function() { tag.remove(); });
+          tag.appendChild(rm);
+          tagsContainer.appendChild(tag);
+        }
+        initOpts.forEach(addOptTag);
+        const optInputRow = el('div', 'flex gap-2');
+        const optInput = el('input', 'flex-1 rounded-lg border border-white/20 bg-gray-700 text-gray-200 p-2 placeholder-gray-500');
+        optInput.placeholder = f.placeholder || 'Nhập tùy chọn rồi nhấn Enter...';
+        const addOptBtn = el('button', 'px-2 py-1 rounded-lg border border-white/20 bg-gray-700 hover:bg-gray-600 text-xs whitespace-nowrap', '+ Thêm');
+        addOptBtn.type = 'button';
+        function tryAddOpt() {
+          const val = optInput.value.trim();
+          if (!val) return;
+          const existing = Array.from(tagsContainer.querySelectorAll('[data-option-value]')).map(function(t) { return t.dataset.optionValue; });
+          if (existing.includes(val)) { optInput.value = ''; return; }
+          addOptTag(val);
+          optInput.value = '';
+        }
+        addOptBtn.addEventListener('click', tryAddOpt);
+        optInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); tryAddOpt(); } });
+        optInputRow.appendChild(optInput);
+        optInputRow.appendChild(addOptBtn);
+        optBlock.appendChild(optHead);
+        optBlock.appendChild(tagsContainer);
+        optBlock.appendChild(optInputRow);
+        b.appendChild(optBlock);
+      }
       else if(f.type==='file'){
         const wrapper=el('div','space-y-2');
         const input=el('input',inputCls); input.type='file'; input.id=f.id; input.accept=f.accept||'image/*'; input.placeholder=f.placeholder||'';
@@ -1407,7 +1695,7 @@ const AdminState = (() => {
       {type:'input',id:'cat-name',placeholder:'Tên danh mục'}
     ], ()=>{
       if (!canManageMenu()) { Toast.error('Bạn không có quyền thêm danh mục'); return; }
-      const n=qs('#cat-name').value.trim(); if(!n) return; categories.push({id:'cat-'+Date.now(),name:n}); persistMenu(); renderCategories();
+      const n=qs('#cat-name').value.trim(); if(!n) return; categories.push({id:'cat-'+Date.now(),name:n,sort_order:categories.length}); persistMenu(); renderCategories();
     }));
     addItem&&addItem.addEventListener('click', ()=>openModal('Thêm món',[
       {type:'input',id:'it-name',placeholder:'Tên món'},
@@ -1416,7 +1704,8 @@ const AdminState = (() => {
       {type:'sizes-editor',id:'it-sizes-editor',value:[{ label: 'Size M', priceK: 35, isDefault: true }],dependsOn:'it-has-sizes'},
       {type:'input',id:'it-desc',placeholder:'Mô tả'},
       {type:'file',id:'it-img',placeholder:'Chọn ảnh', accept:'image/*'},
-      {type:'select',id:'it-cat',placeholder:'Chọn danh mục cho món cần thêm',options:categories.map(c=>({value:c.id,label:c.name}))}
+      {type:'select',id:'it-cat',placeholder:'Chọn danh mục cho món cần thêm',options:categories.map(c=>({value:c.id,label:c.name}))},
+      {type:'options-editor',id:'it-options',value:[],placeholder:'Nhập tùy chọn rồi nhấn Enter...'}
     ], async()=>{
       if (!canManageMenu()) { Toast.error('Bạn không có quyền thêm món'); return; }
       const name=qs('#it-name').value.trim(); const p=Number(qs('#it-price').value||'0'); const desc=qs('#it-desc').value.trim(); const cat=qs('#it-cat').value;
@@ -1434,7 +1723,7 @@ const AdminState = (() => {
         if(!img){ Toast.error('❌ Nén ảnh thất bại'); return; }
       }
       
-      const newItem={id:'it-'+Date.now(), name, priceK:Math.round(p || 0), desc, img, cat, visible:true};
+      const newItem={id:'it-'+Date.now(), name, priceK:Math.round(p || 0), desc, img, cat, visible:true, sort_order:items.length};
       if(hasSizes){
         const sizes = readDynamicSizesFromEditor('it-sizes-editor');
         if (!sizes.length) { Toast.error('❌ Cần ít nhất 1 size hợp lệ'); return; }
@@ -1450,10 +1739,25 @@ const AdminState = (() => {
         newItem.sizes={};
         newItem.defaultSize='';
       }
-      
+      newItem.options = readOptionsFromEditor('it-options');
       items.push(newItem);
       persistMenu(); renderItems(); Toast.success('✓ Thêm món thành công');
+      // DEBUG: Log saved item with options
+      const savedItem = items.find(it => it.id === newItem.id);
+      console.log('[ADMIN DEBUG] Thêm món thành công:', {
+        id: newItem.id,
+        name: newItem.name,
+        options: newItem.options,
+        savedInState: savedItem ? savedItem.options : 'NOT FOUND'
+      });
     }));
+    // Sort edit mode buttons
+    const sortEditBtn   = qs('#sort-edit-btn');
+    const sortSaveBtn   = qs('#sort-save-btn');
+    const sortCancelBtn = qs('#sort-cancel-btn');
+    sortEditBtn   && sortEditBtn.addEventListener('click', enterSortMode);
+    sortSaveBtn   && sortSaveBtn.addEventListener('click', () => exitSortMode(true));
+    sortCancelBtn && sortCancelBtn.addEventListener('click', () => exitSortMode(false));
     renderCategories(); renderItems();
   }
   function bindTabs(){
